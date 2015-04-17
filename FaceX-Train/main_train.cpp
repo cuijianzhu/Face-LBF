@@ -1,8 +1,8 @@
 /*
-FaceX-Train is a tool to train model file for FaceX, which is an open
-source face alignment library.
+FaceX-Train is a tool to train model file for Face-LBF, which is an open
+source face alignment library, it is based on FaceX.
 
-Copyright(C) 2014  Yang Cao
+Copyright(C) 2014  Yichun Shi
 
 This program is free software : you can redistribute it and / or modify
 it under the terms of the GNU General Public License as published by
@@ -29,8 +29,8 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 
 #include <opencv2/opencv.hpp>
 
-#include "regressor_train.h"
 #include "utils_train.h"
+#include "regressor_train.h"
 
 using namespace std;
 
@@ -237,14 +237,13 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		shapes.push_back(dp.landmarks);
 
 	vector<cv::Point2d> mean_shape = MeanShape(shapes, tp);
-
+	
 	vector<vector<cv::Point2d>> test_init_shapes = 
 		CreateTestInitShapes(training_data, tp);
 
 	vector<DataPoint> argumented_training_data = 
 		ArgumentData(training_data, tp.ArgumentDataFactor); 
-	//AugmentData为什么是取随机的shape作为init_shape，为什么不用前面k—mean得到的
-
+	
 	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
 	for (int i = 0; i < tp.T; ++i)
 	{
@@ -270,17 +269,16 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 	cv::FileStorage model_file;
 	model_file.open(tp.output_model_pathname, cv::FileStorage::WRITE);
-	model_file << "mean_shape" << mean_shape;
-	model_file << "test_init_shapes" << "[";
-	for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
+	// Because there is something wrong with operator << on my PC, I turn to write() instead.
+	write(model_file, "mean_shape", mean_shape);
 	{
-		model_file << *it;
+		// WriteStructContext is the function to descend to a lower level of XML Node.
+		// It is classified by MAP and SEQ, and the nodes of SEQ don't have names.
+		cv::WriteStructContext ws_tis(model_file, "test_init_shapes", CV_NODE_SEQ + CV_NODE_FLOW);
+		for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
+			write(model_file, "", *it);
 	}
-	model_file << "]";
-	model_file << "stage_regressors" << "[";
-	for (auto it = stage_regressors.begin(); it != stage_regressors.end(); ++it)
-		model_file << *it;
-	model_file << "]";
+	write(model_file, "stage_regressors", stage_regressors);
 	model_file.release();
 }
 

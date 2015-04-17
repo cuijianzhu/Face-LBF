@@ -169,21 +169,29 @@ vector<cv::Point2d> RegressorTrain::Apply(const vector<cv::Point2d> &mean_shape,
 	return result;
 }
 
+template<typename T1, typename T2>
+void write(cv::FileStorage& fs, const string&, const std::pair<T1, T2>& p)
+{
+	fs << "{";
+	cv::write(fs, "first", p.first);
+	cv::write(fs, "second", p.second);
+	fs << "}";
+}
 
 void RegressorTrain::write(cv::FileStorage &fs)const
 {
-	fs << "{";
-	fs << "pixels";
-	fs << "[";
-	for (auto it = pixels.begin(); it != pixels.end(); ++it)
-		fs << "{" << "first" << it->first << "second" << it->second << "}";
-	fs << "]";
-	fs << "ferns" << "[";
-	for (auto it = ferns.begin(); it != ferns.end(); ++it)
-		fs << *it;
-	fs << "]";
-	fs << "base" << base;
-	fs << "}";
+	cv::WriteStructContext ws_reg(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+	{
+		cv::WriteStructContext ws_pix(fs, "pixels", CV_NODE_SEQ + CV_NODE_FLOW);
+		for (auto it = pixels.begin(); it != pixels.end(); ++it)
+		{
+			cv::WriteStructContext ws_pix_pair(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+			cv::write(fs, "first", it->first);
+			cv::write(fs, "second", it->second);
+		}
+	}
+	cv::write(fs, "ferns", ferns);
+	cv::write(fs, "base", base);
 }
 
 void write(cv::FileStorage& fs, const string&, const RegressorTrain& r)

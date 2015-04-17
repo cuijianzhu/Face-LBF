@@ -146,31 +146,32 @@ void FernTrain::ApplyMini(cv::Mat features, std::vector<double> &coeffs)const
 		coeffs[output[i].first] += output[i].second;
 }
 
-
-
 void FernTrain::write(cv::FileStorage &fs)const
 {
-	fs << "{";
-	fs << "thresholds" << thresholds;
-	fs << "features_index";
-	fs << "[";
-	for (auto it = features_index.begin(); it != features_index.end(); ++it)
-		fs << "{" << "first" << it->first << "second" << it->second << "}";
-	fs << "]";
-	fs << "outputs_mini";
-	fs << "[";
-	for (const auto &output: outputs_mini)
+	cv::WriteStructContext ws_fern(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+	cv::write(fs, "thresholds", thresholds);
 	{
-		fs << "[";
-		for (int i = 0; i < training_parameters.Q; ++i)
+		cv::WriteStructContext ws_fi(fs, "features_index", CV_NODE_SEQ + CV_NODE_FLOW);
+		for (auto it = features_index.begin(); it != features_index.end(); ++it)
 		{
-			fs << "{" << "index" << output[i].first <<
-				"coeff" << output[i].second << "}";
+			cv::WriteStructContext ws_fi_pair(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+			cv::write(fs, "first", it->first);
+			cv::write(fs, "second", it->second);
 		}
-		fs << "]";
 	}
-	fs << "]";
-	fs << "}";
+	{
+		cv::WriteStructContext ws_om(fs, "outputs_mini", CV_NODE_SEQ + CV_NODE_FLOW);
+		for (const auto &output : outputs_mini)
+		{
+			cv::WriteStructContext ws_om_inner(fs, "", CV_NODE_SEQ + CV_NODE_FLOW);
+			for (int i = 0; i < training_parameters.Q; ++i)
+			{
+				cv::WriteStructContext ws_om_pair(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+				cv::write(fs, "index", output[i].first);
+				cv::write(fs, "coeff", output[i].second);
+			}
+		}
+	}
 }
 
 void write(cv::FileStorage& fs, const string&, const FernTrain &f)
