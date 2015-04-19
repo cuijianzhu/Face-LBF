@@ -37,16 +37,13 @@ struct TrainingParameters
 	std::string output_model_pathname = "";
 
 	/* Model parameters */
-	int T = -1;
-	int K = -1;
-	int P = -1;
-	double Kappa = -1;
-	int F = -1;
+	int num_stages = -1;
+	int num_feats = -1;
+	std::vector<double> radius_feats;
+	int depth_trees = -1;
 	int Beta = -1;
 	int TestInitShapeCount = -1;
-	int ArgumentDataFactor = -1;
-	int Base = -1;
-	int Q = -1;
+	int AugmentDataFactor = -1;
 };
 
 struct DataPoint
@@ -55,6 +52,7 @@ struct DataPoint
 	cv::Rect face_rect;
 	std::vector<cv::Point2d> landmarks;
 	std::vector<cv::Point2d> init_shape;
+	std::vector<bool> bin_feat;
 };
 
 struct Transform

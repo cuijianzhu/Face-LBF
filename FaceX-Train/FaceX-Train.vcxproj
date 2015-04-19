@@ -155,15 +155,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="fern_train.cpp" />
+    <ClCompile Include="fern_train.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="main_train.cpp" />
-    <ClCompile Include="regressor_train.cpp" />
+    <ClCompile Include="regressor_train.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="utils_train.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fern_train.h" />
-    <ClInclude Include="regressor_train.h" />
-    <ClInclude Include="utils_train.h" />
+    <ClInclude Include="regressor_train.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="utils_train.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClInclude>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

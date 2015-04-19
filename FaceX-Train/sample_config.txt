@@ -15,7 +15,7 @@ landmark_count: 5
 # in the landmark configuration, choose one near eye center (e.g. eye corner)
 left_eye_index: 0
 
-# Same as above, for right eye center
+# Same as above, for right eye center,whose distance are used to normalize the shape
 right_eye_index: 1
 
 # The output model file path and name (must end with ".xml.gz")
@@ -27,20 +27,18 @@ output_model_pathname: model.xml.gz
 # can use the default value as below.
 
 # The number of top-level stages
-T: 10
+num_stages: 5
 
-# The number of bottom-level stages for each top-level stage
-K: 500
+# The number of random features generated for each top-level stage 
+num_feats: 500
 
-# The number of random features generated for each top-level stage
-P: 400
-
-# The level of randomness for each feature. Must in range [0.01, 1]. Lower value 
+# The range of randomness for each feature. Must in range [0.01, 1]. Lower value 
 # means features will be generated near the current guessed landmark positions.
-Kappa: 0.3
+# the number of radiuses should be eqaul to num_stages
+radius_feats: 0.4 0.3 0.15 0.1 0.06
 
-# The F parameter of fern
-F: 5
+# The Depth of trees
+depth_trees: 5
 
 # Regularization coefficient
 Beta: 1000
@@ -51,10 +49,4 @@ TestInitShapeCount: 5
 
 # Data argumentation factor. Lower value will speed up training, but may hurt
 # accuracy
-ArgumentDataFactor: 20
-
-# The number of vector basis for model compression
-Base: 512
-
-# The number of non-zero value in sparse coding for model compression
-Q: 5
+ArgumentDataFactor: 1

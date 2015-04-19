@@ -56,9 +56,9 @@ TrainingParameters ReadParameters(const string &filename)
 				throw runtime_error("Illegal line " + to_string(line_no) +
 					" in config file " + filename);
 			}
-			
-			items[TrimStr(line.substr(0, colon_pos))] = TrimStr(
-				line.substr(colon_pos + 1));
+
+			items[TrimStr(line.substr(0, colon_pos))] = 
+				TrimStr(line.substr(colon_pos + 1));
 		}
 
 		result.training_data_root = items.at("training_data_root");
@@ -72,36 +72,35 @@ TrainingParameters ReadParameters(const string &filename)
 		if (result.right_eye_index < 0 || result.right_eye_index >= result.landmark_count)
 			throw out_of_range("right_eye_index not in range.");
 		result.output_model_pathname = items.at("output_model_pathname");
-		result.T = stoi(items.at("T"));
-		if (result.T <= 0)
-			throw invalid_argument("T must be positive.");
-		result.K = stoi(items.at("K"));
-		if (result.K <= 0)
-			throw invalid_argument("K must be positive.");
-		result.P = stoi(items.at("P"));
-		if (result.P <= 0)
-			throw invalid_argument("P must be positive.");
-		result.Kappa = stod(items.at("Kappa"));
-		if (result.Kappa < 0.01 || result.Kappa > 1)
-			throw out_of_range("Kappa must be in [0.01, 1].");
-		result.F = stoi(items.at("F"));
-		if (result.F <= 0)
-			throw invalid_argument("F must be positive.");
+		result.num_stages = stoi(items.at("num_stages"));
+		if (result.num_stages <= 0)
+			throw invalid_argument("num_stages must be positive.");
+		result.num_feats = stoi(items.at("num_feats"));
+		if (result.num_feats <= 0)
+			throw invalid_argument("num_feats must be positive.");
+		// radius_feats is a vector
+		istringstream iss(items.at("radius_feats"));
+		double radius;
+		while (iss >> radius)
+		{
+			result.radius_feats.push_back(radius);
+			if (radius < 0.01 || radius > 1)
+				throw out_of_range("radius_feats must be in [0.01, 1].");
+		}
+		if (result.radius_feats.size() != result.num_stages )
+			throw out_of_range("the number of radius_feats must be equal to num_stage");
+		result.depth_trees = stoi(items.at("depth_trees"));
+		if (result.depth_trees <= 0)
+			throw invalid_argument("depth_trees must be positive.");
 		result.Beta = stoi(items.at("Beta"));
 		if (result.Beta <= 0)
 			throw invalid_argument("Beta must be positive.");
 		result.TestInitShapeCount = stoi(items.at("TestInitShapeCount"));
 		if (result.TestInitShapeCount <= 0)
 			throw invalid_argument("TestInitShapeCount must be positive.");
-		result.ArgumentDataFactor = stoi(items.at("ArgumentDataFactor"));
-		if (result.ArgumentDataFactor <= 0)
-			throw invalid_argument("ArgumentDataFactor must be positive.");
-		result.Base = stoi(items.at("Base"));
-		if (result.Base <= 0)
-			throw invalid_argument("Base must be positive.");
-		result.Q = stoi(items.at("Q"));
-		if (result.Q <= 0)
-			throw invalid_argument("Q must be positive.");
+		result.AugmentDataFactor = stoi(items.at("AugmentDataFactor"));
+		if (result.AugmentDataFactor <= 0)
+			throw invalid_argument("AugmentDataFactor must be positive.");
 	}
 	else
 		throw runtime_error("Cannot open config file: " + filename);
@@ -182,7 +181,7 @@ vector<vector<cv::Point2d>> CreateTestInitShapes(
 	return result;
 }
 
-vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, int factor)
+vector<DataPoint> AugmentData(const vector<DataPoint> &training_data, int factor)
 {
 	if (training_data.size() < 2 * factor)
 	{
@@ -227,7 +226,6 @@ vector<vector<cv::Point2d>> ComputeNormalizedTargets(
 	return result;
 }
 
-
 void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters &tp)
 {
 	cout << "Training data count: " << training_data.size() << endl;
@@ -241,19 +239,19 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	vector<vector<cv::Point2d>> test_init_shapes = 
 		CreateTestInitShapes(training_data, tp);
 
-	vector<DataPoint> argumented_training_data = 
-		ArgumentData(training_data, tp.ArgumentDataFactor); 
+	vector<DataPoint> augmented_training_data = 
+		AugmentData(training_data, tp.AugmentDataFactor); 
 	
-	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
-	for (int i = 0; i < tp.T; ++i)
+	vector<RegressorTrain> stage_regressors(tp.num_stages, RegressorTrain(tp));
+	for (int i = 0; i < tp.num_stages; ++i)
 	{
 		long long s = cv::getTickCount();
 
 		vector<vector<cv::Point2d>> normalized_targets = 
-			ComputeNormalizedTargets(mean_shape, argumented_training_data);
+			ComputeNormalizedTargets(mean_shape, augmented_training_data);
 		stage_regressors[i].Regress(mean_shape, &normalized_targets, 
-			argumented_training_data);
-		for (DataPoint &dp : argumented_training_data)
+			augmented_training_data);
+		for (DataPoint &dp : augmented_training_data)
 		{
 			vector<cv::Point2d> offset = 
 				stage_regressors[i].Apply(mean_shape, dp);
@@ -264,7 +262,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 		cout << "(^_^) Finish training " << i + 1 << " regressor. Using " 
 			<< (cv::getTickCount() - s) / cv::getTickFrequency() 
-			<< "s. " << tp.T << " in total." << endl;
+			<< "s. " << tp.num_stages << " in total." << endl;
 	}
 
 	cv::FileStorage model_file;
@@ -293,7 +291,7 @@ int main(int argc, char *argv[])
 	try
 	{
 		TrainingParameters tp = ReadParameters(argv[1]);
-
+		cout << "s";
 		cout << "Training begin." << endl;
 		vector<DataPoint> training_data = GetTrainingData(tp);
 		TrainModel(training_data, tp);

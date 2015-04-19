@@ -18,13 +18,13 @@
     <ClCompile Include="fern_train.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="regressor_train.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="utils_train.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="main_train.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="regressor_train.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
