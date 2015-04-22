@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="fern_train.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="utils_train.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -27,15 +24,18 @@
     <ClCompile Include="regressor_train.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="rfs_train.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fern_train.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="regressor_train.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="utils_train.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="rfs_train.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

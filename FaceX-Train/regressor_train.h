@@ -28,13 +28,13 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 #include<opencv2/core/core.hpp>
 
 #include "utils_train.h"
-#include "fern_train.h"
+#include "rfs_train.h"
 
 class RegressorTrain
 {
 public:
 	RegressorTrain(const TrainingParameters &tp);
-	void Regress(const std::vector<cv::Point2d> &mean_shape, 
+	void Regress(int index_reg, const std::vector<cv::Point2d> &mean_shape,
 		std::vector<std::vector<cv::Point2d>> *targets,
 		const std::vector<DataPoint> & training_data);
 	std::vector<cv::Point2d> Apply(const std::vector<cv::Point2d> &mean_shape, 
@@ -43,12 +43,11 @@ public:
 	void write(cv::FileStorage &fs)const;
 
 private:
-	std::vector<std::pair<int, cv::Point2d>> pixels;
-	std::vector<FernTrain> ferns;
-	cv::Mat base;
+	std::vector<RFSTrain> forests;
 	const TrainingParameters &training_parameters;
 
-	void CompressFerns();
+	void GlobalRegress(std::vector<std::vector<cv::Point2d>> *targets,
+		vector<vector<bool>> &training_data);
 };
 
 void write(cv::FileStorage& fs, const std::string&, const RegressorTrain& r);

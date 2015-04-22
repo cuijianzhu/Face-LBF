@@ -38,6 +38,7 @@ struct TrainingParameters
 
 	/* Model parameters */
 	int num_stages = -1;
+	int num_trees = -1;
 	int num_feats = -1;
 	std::vector<double> radius_feats;
 	int depth_trees = -1;
@@ -52,7 +53,6 @@ struct DataPoint
 	cv::Rect face_rect;
 	std::vector<cv::Point2d> landmarks;
 	std::vector<cv::Point2d> init_shape;
-	std::vector<bool> bin_feat;
 };
 
 struct Transform

@@ -29,7 +29,10 @@ output_model_pathname: model.xml.gz
 # The number of top-level stages
 num_stages: 5
 
-# The number of random features generated for each top-level stage 
+# The number of top-level stages
+num_trees: 10
+
+# The number of random features generated for each top-level node
 num_feats: 500
 
 # The range of randomness for each feature. Must in range [0.01, 1]. Lower value 

@@ -75,6 +75,9 @@ TrainingParameters ReadParameters(const string &filename)
 		result.num_stages = stoi(items.at("num_stages"));
 		if (result.num_stages <= 0)
 			throw invalid_argument("num_stages must be positive.");
+		result.num_trees = stoi(items.at("num_trees"));
+		if (result.num_trees <= 0)
+			throw invalid_argument("num_trees must be positive.");
 		result.num_feats = stoi(items.at("num_feats"));
 		if (result.num_feats <= 0)
 			throw invalid_argument("num_feats must be positive.");
@@ -249,7 +252,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 		vector<vector<cv::Point2d>> normalized_targets = 
 			ComputeNormalizedTargets(mean_shape, augmented_training_data);
-		stage_regressors[i].Regress(mean_shape, &normalized_targets, 
+		stage_regressors[i].Regress(i, mean_shape, &normalized_targets, 
 			augmented_training_data);
 		for (DataPoint &dp : augmented_training_data)
 		{
