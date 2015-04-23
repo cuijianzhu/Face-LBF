@@ -47,7 +47,7 @@ private:
 	const TrainingParameters &training_parameters;
 
 	void GlobalRegress(std::vector<std::vector<cv::Point2d>> *targets,
-		vector<vector<bool>> &training_data);
+		const cv::Mat &mat_feats);
 };
 
 void write(cv::FileStorage& fs, const std::string&, const RegressorTrain& r);
