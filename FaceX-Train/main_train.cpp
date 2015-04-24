@@ -279,8 +279,12 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
 			write(model_file, "", *it);
 	}
-	write(model_file, "stage_regressors", stage_regressors);
+	// write(model_file, "stage_regressors", stage_regressors);
 	model_file.release();
+	for (int i = 0; i < tp.num_stages; ++i)
+	{
+		stage_regressors[i].release();
+	}
 }
 
 int main(int argc, char *argv[])
@@ -291,17 +295,18 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	try
+	if (true)
 	{
 		TrainingParameters tp = ReadParameters(argv[1]);
-		cout << "s";
 		cout << "Training begin." << endl;
 		vector<DataPoint> training_data = GetTrainingData(tp);
 		TrainModel(training_data, tp);
 	}
+	/*
 	catch (const exception &e)
 	{
 		cout << e.what() << endl;
 		return -1;
 	}
+	*/
 }

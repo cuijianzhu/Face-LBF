@@ -97,12 +97,14 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 				if (feat_pos_first.inside(cv::Rect(0, 0, training_data[i].image.cols, training_data[i].image.rows))
 					&& feat_pos_second.inside(cv::Rect(0, 0, training_data[i].image.cols, training_data[i].image.rows)))
 				{
-					feats_val.at<double>(i, j) =
+					double s = training_data[i].image.at<uchar>(feat_pos_first)
+						-training_data[i].image.at<uchar>(feat_pos_second);
+					feats_val.at<double>(itr_data, j) =
 						training_data[i].image.at<uchar>(feat_pos_first)
 						- training_data[i].image.at<uchar>(feat_pos_second);
 				}
 				else
-					feats_val.at<double>(i, j) = 0;
+					feats_val.at<double>(itr_data, j) = 0;
 			}
 		}
 
@@ -120,16 +122,18 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 			mean_y += (*targets)[i][index_lm].y;
 			mean_y2 += (*targets)[i][index_lm].y * (*targets)[i][index_lm].y;
 		}
-		mean_x /= data_node[idx_node].size();
-		mean_x2 /= data_node[idx_node].size();
-		mean_y /= data_node[idx_node].size();
-		mean_y2 /= data_node[idx_node].size();
+		double base_size = 1.0 / data_node[idx_node].size();
+		mean_x *= base_size;
+		mean_x2 *= base_size;
+		mean_y *= base_size;
+		mean_y2 *= base_size;
 		var = mean_x2 - mean_x*mean_x + mean_y2 - mean_y*mean_y;
+		var = var * data_node[idx_node].size();
 
 		//calculate the variance reduction of each feature and choose the max
 		vector<double> var_reduc = vector<double>(training_parameters.num_feats);
-		int max_feat;
-		double max_var_reduc = 0;
+		int max_feat = -1;
+		double max_var_reduc = - DBL_MAX;
 		double max_threshold;
 		for (int i = 0; i < training_parameters.num_feats; i++)
 		{
@@ -144,7 +148,7 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 					mean_x_l += (*targets)[j][index_lm].x;
 					mean_x2_l += (*targets)[j][index_lm].x * (*targets)[j][index_lm].x;
 					mean_y_l += (*targets)[j][index_lm].y;
-					mean_y2_l += (*targets)[j][index_lm].y* (*targets)[j][index_lm].y;
+					mean_y2_l += (*targets)[j][index_lm].y * (*targets)[j][index_lm].y;
 					cnt_l++;
 				}
 				else
@@ -152,29 +156,31 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 					mean_x_r += (*targets)[j][index_lm].x;
 					mean_x2_r += (*targets)[j][index_lm].x * (*targets)[j][index_lm].x;
 					mean_y_r += (*targets)[j][index_lm].y;
-					mean_y2_r += (*targets)[j][index_lm].y* (*targets)[j][index_lm].y;
+					mean_y2_r += (*targets)[j][index_lm].y * (*targets)[j][index_lm].y;
 					cnt_r++;
 				}
 			}
-			mean_x_l /= data_node[idx_node].size();
-			mean_x2_l /= data_node[idx_node].size();
-			mean_y_l /= data_node[idx_node].size();
-			mean_y2_l /= data_node[idx_node].size();
-			mean_x_r /= data_node[idx_node].size();
-			mean_x2_r /= data_node[idx_node].size();
-			mean_y_r /= data_node[idx_node].size();
-			mean_y2_r /= data_node[idx_node].size();
-			double var_split = mean_x2_l + mean_x2_r - mean_x_l*mean_x_l - mean_x_r*mean_x_r
-				+ mean_y2_l + mean_y2_r - mean_y_l*mean_y_l - mean_y_r*mean_y_r;
+			double base_l = (cnt_l == 0) ? 0 : (1.0 / cnt_l);
+			double base_r = (cnt_r == 0) ? 0 : (1.0 / cnt_r);
+			mean_x_l *= base_l;
+			mean_x2_l *= base_l;
+			mean_y_l *= base_l;
+			mean_y2_l *= base_l;
+			mean_x_r *= base_r;
+			mean_x2_r *= base_r;
+			mean_y_r *= base_r;
+			mean_y2_r *= base_r;
+			double var_split = (mean_x2_l + mean_y2_l - mean_x_l*mean_x_l - mean_y_l*mean_y_l) * cnt_l
+				+ (mean_x2_r + mean_y2_r - mean_x_r*mean_x_r - mean_y_r*mean_y_r) * cnt_r;
 			if (var - var_split > max_var_reduc)
-			{
+			{				
 				max_feat = i;
 				max_var_reduc = var - var_split;
 				max_threshold = thresh;
 			}
 		}
-		feats[idx_node] = pair<cv::Point2d, cv::Point2d>(feats_first[max_feat], feats_second[max_feat]);
 		thresholds[idx_node] = max_threshold;
+		feats[idx_node] = pair<cv::Point2d, cv::Point2d>(feats_first[max_feat], feats_second[max_feat]);
 		
 		// allocate the samples for the children
 		// 2*idx_node+1 is the left child
@@ -190,7 +196,7 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 }
 
 void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
-	const DataPoint &data, bool *bin_feat) const
+	const DataPoint &data, float *bin_feat) const
 {
 	int num_nodes_split = (num_nodes - 1) / 2;
 	int idx_node = 0;
@@ -225,7 +231,7 @@ void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point
 		+ index_tree * num_leaves + idx_node - num_nodes;
 	if (bool_index > training_parameters.landmark_count * training_parameters.num_trees * num_leaves)
 		throw out_of_range("bool index is out of the range of bin_feat during appling the tree");
-	bin_feat[bool_index] = true;
+	bin_feat[bool_index] = 1;
 }
 
 
@@ -261,7 +267,7 @@ void RFSTrain::Regress(int index_lm, int index_reg,
 }
 
 void RFSTrain::Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
-	const DataPoint &data, bool *bin_feat) const
+	const DataPoint &data, float *bin_feat) const
 {
 	for (int i = 0; i < training_parameters.num_trees; i++){
 		rtrees[i].Apply(i, index_lm, mean_shape, data, bin_feat);

@@ -34,6 +34,7 @@ class RegressorTrain
 {
 public:
 	RegressorTrain(const TrainingParameters &tp);
+	void release();
 	void Regress(int index_reg, const std::vector<cv::Point2d> &mean_shape,
 		std::vector<std::vector<cv::Point2d>> *targets,
 		const std::vector<DataPoint> & training_data);
@@ -43,8 +44,10 @@ public:
 	void write(cv::FileStorage &fs)const;
 
 private:
+	int feat_length;
 	std::vector<RFSTrain> forests;
 	const TrainingParameters &training_parameters;
+	CvSVM* svm_regressors;
 
 	void GlobalRegress(std::vector<std::vector<cv::Point2d>> *targets,
 		const cv::Mat &mat_feats);
