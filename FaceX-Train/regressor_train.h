@@ -50,7 +50,7 @@ private:
 	CvSVM* svm_regressors;
 
 	void GlobalRegress(std::vector<std::vector<cv::Point2d>> *targets,
-		const cv::Mat &mat_feats);
+		const std::vector<std::vector<bool>> &bin_feats);
 };
 
 void write(cv::FileStorage& fs, const std::string&, const RegressorTrain& r);

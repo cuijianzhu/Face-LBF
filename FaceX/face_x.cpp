@@ -69,7 +69,7 @@ vector<cv::Point2d> FaceX::Alignment(cv::Mat image, cv::Rect face_rect) const
 		for (int j = 0; j < stage_regressors_.size(); ++j)
 		{
 			vector<cv::Point2d> offset =
-				stage_regressors_[j].Apply(mean_shape_, image, init_shape);
+				stage_regressors_[j].Apply(image, mean_shape_, init_shape);
 			Transform t = Procrustes(init_shape, mean_shape_);
 			t.Apply(&offset, false);
 			init_shape = ShapeAdjustment(init_shape, offset);
@@ -109,7 +109,7 @@ vector<cv::Point2d> FaceX::Alignment(cv::Mat image,
 		for (int j = 0; j < stage_regressors_.size(); ++j)
 		{
 			vector<cv::Point2d> offset =
-				stage_regressors_[j].Apply(mean_shape_, image, init_shape);
+				stage_regressors_[j].Apply(image, mean_shape_, init_shape);
 			Transform t = Procrustes(init_shape, mean_shape_);
 			t.Apply(&offset, false);
 			init_shape = ShapeAdjustment(init_shape, offset);

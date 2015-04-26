@@ -27,7 +27,7 @@ output_model_pathname: model.xml.gz
 # can use the default value as below.
 
 # The number of top-level stages
-num_stages: 5
+num_stages: 3
 
 # The number of top-level stages
 num_trees: 10
@@ -38,10 +38,11 @@ num_feats: 500
 # The range of randomness for each feature. Must in range [0.01, 1]. Lower value 
 # means features will be generated near the current guessed landmark positions.
 # the number of radiuses should be eqaul to num_stages
-radius_feats: 0.4 0.3 0.15 0.1 0.06
+# radius_feats: 0.4 0.3 0.15 0.1 0.06
+radius_feats: 0.4 0.3 0.15
 
 # The Depth of trees
-depth_trees: 5
+depth_trees: 4
 
 # Regularization coefficient
 Beta: 1000
@@ -52,4 +53,4 @@ TestInitShapeCount: 5
 
 # Data argumentation factor. Lower value will speed up training, but may hurt
 # accuracy
-ArgumentDataFactor: 1
+AugmentDataFactor: 1

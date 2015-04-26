@@ -33,63 +33,46 @@ THE SOFTWARE.
 
 using namespace std;
 
-
-vector<cv::Point2d> Regressor::Apply(const vector<cv::Point2d> &mean_shape, 
-	cv::Mat image, const std::vector<cv::Point2d> &init_shape) const
+vector<cv::Point2d> Regressor::Apply(cv::Mat &image,
+	const vector<cv::Point2d> &mean_shape,
+	const vector<cv::Point2d> &init_shape) const
 {
-	cv::Mat pixels_val(1, pixels.size(), CV_64FC1);
-	Transform t = Procrustes(init_shape, mean_shape);
-	vector<cv::Point2d> offsets(pixels.size());
-	for (int j = 0; j < pixels.size(); ++j)
-		offsets[j] = pixels[j].second;
-	t.Apply(&offsets, false);
+	vector<cv::Point2d> offset(mean_shape.size());
 
-	double *p = pixels_val.ptr<double>(0);
-	for (int j = 0; j < pixels.size(); ++j)
-	{
-		cv::Point pixel_pos = init_shape[pixels[j].first] + offsets[j];
-		if (pixel_pos.inside(cv::Rect(0, 0, image.cols, image.rows)))
-			p[j] = image.at<uchar>(pixel_pos);
-		else
-			p[j] = 0;
+	vector<bool> bin_feat = vector<bool>(feat_length);
+	for (int i = 0; i < mean_shape.size(); ++i){
+		forests[i].Apply(mean_shape.size(), i, image, mean_shape, init_shape, bin_feat);
 	}
-
-	vector<double> coeffs(base.cols);
-	for (int i = 0; i < ferns.size(); ++i)
-		ferns[i].ApplyMini(pixels_val, coeffs);
-
-	cv::Mat result_mat = cv::Mat::zeros(mean_shape.size() * 2, 1, CV_64FC1);
-	for (int i = 0; i < base.cols; ++i)
-		result_mat += coeffs[i] * base.col(i);
-	vector<cv::Point2d> result(mean_shape.size());
-	for (int i = 0; i < result.size(); ++i)
-	{
-		result[i].x = result_mat.at<double>(i * 2);
-		result[i].y = result_mat.at<double>(i * 2 + 1);
+	cv::Mat mat_feat(1, feat_length, CV_32FC1);
+	for (int i = 0; i < feat_length; i++){
+		mat_feat.at<float>(0, i) = bin_feat[i];
 	}
-	return result;
+	for (int i = 0; i < mean_shape.size(); ++i){
+		offset[i].x = svm_regressors[2 * i].predict(mat_feat);
+		offset[i].y = svm_regressors[2 * i + 1].predict(mat_feat);
+	}
+	return offset;
 }
-
 void Regressor::read(const cv::FileNode &fn)
 {
-	pixels.clear();
-	ferns.clear();
-	cv::FileNode pixels_node = fn["pixels"];
-	for (auto it = pixels_node.begin(); it != pixels_node.end(); ++it)
+	forests.clear();
+	fn["feat_length"] >> feat_length;
+	cv::FileNode forests_node = fn["forests"];
+	for (auto it = forests_node.begin(); it != forests_node.end(); ++it)
 	{
-		pair<int, cv::Point2d> pixel;
-		(*it)["first"] >> pixel.first;
-		(*it)["second"] >> pixel.second;
-		pixels.push_back(pixel);
+		RFS forest;
+		*it >> forest;
+		forests.push_back(forest);
 	}
-	cv::FileNode ferns_node = fn["ferns"];
-	for (auto it = ferns_node.begin(); it != ferns_node.end(); ++it)
+	cv::FileNode svm_node = fn["svm_regressors"];
+	svm_regressors = new CvSVM[svm_node.size()];
+	int idx = 0;
+	for (auto it = svm_node.begin(); it != svm_node.end(); ++it)
 	{
-		Fern f;
-		*it >> f;
-		ferns.push_back(f);
+		// *it >> svm_regressors[idx];
+		svm_regressors[idx].read(const_cast<CvFileStorage*>((*it).fs), const_cast<CvFileNode*>((*it).node));
+		++idx;
 	}
-	fn["base"] >> base;
 }
 
 void read(const cv::FileNode& node, Regressor& r, const Regressor& default_value)

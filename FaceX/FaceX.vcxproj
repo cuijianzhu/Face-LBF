@@ -156,14 +156,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="face_x.cpp" />
-    <ClCompile Include="fern.cpp" />
+    <ClCompile Include="rfs.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="regressor.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="face_x.h" />
-    <ClInclude Include="fern.h" />
+    <ClInclude Include="rfs.h" />
     <ClInclude Include="regressor.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>

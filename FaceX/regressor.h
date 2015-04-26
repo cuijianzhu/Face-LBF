@@ -31,21 +31,21 @@ THE SOFTWARE.
 
 #include<opencv2/core/core.hpp>
 
-#include "fern.h"
+#include "rfs.h"
 
 class Regressor
 {
 public:
-	std::vector<cv::Point2d> Apply(const std::vector<cv::Point2d> &mean_shape, 
-		cv::Mat image, const std::vector<cv::Point2d> &init_shape) const;
+	std::vector<cv::Point2d> Regressor::Apply(cv::Mat &image,
+		const std::vector<cv::Point2d> &mean_shape,
+		const std::vector<cv::Point2d> &init_shape) const;
 
 	void read(const cv::FileNode &fn);
 
 private:
-
-	std::vector<std::pair<int, cv::Point2d>> pixels;
-	std::vector<Fern> ferns;
-	cv::Mat base;
+	int feat_length;
+	std::vector<RFS> forests;
+	CvSVM* svm_regressors;
 };
 
 void read(const cv::FileNode& node, Regressor& r, 

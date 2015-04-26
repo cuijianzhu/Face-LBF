@@ -27,6 +27,8 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
+///////////////////////////////////// Random Tree /////////////////////////////////////
+
 RTreeTrain::RTreeTrain(const TrainingParameters &tp) : training_parameters(tp)
 {
 	depth = training_parameters.depth_trees;
@@ -196,7 +198,7 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 }
 
 void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
-	const DataPoint &data, float *bin_feat) const
+	const DataPoint &data, vector<bool> &bin_feat) const
 {
 	int num_nodes_split = (num_nodes - 1) / 2;
 	int idx_node = 0;
@@ -228,13 +230,32 @@ void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point
 	// calculate the index of this leaf node in the binary feature vector
 	int num_leaves = num_nodes - num_nodes_split;
 	int bool_index = index_lm * training_parameters.num_trees * num_leaves
-		+ index_tree * num_leaves + idx_node - num_nodes;
+		+ index_tree * num_leaves + idx_node - (num_nodes - num_leaves);
 	if (bool_index > training_parameters.landmark_count * training_parameters.num_trees * num_leaves)
 		throw out_of_range("bool index is out of the range of bin_feat during appling the tree");
 	bin_feat[bool_index] = 1;
 }
 
+void RTreeTrain::write(cv::FileStorage &fs)const
+{
+	cv::WriteStructContext ws_tis(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+	cv::write(fs, "num_nodes", num_nodes);
+	{
+		cv::WriteStructContext ws_tis(fs, "feats", CV_NODE_SEQ + CV_NODE_FLOW);
+		for (int i = 0; i < num_nodes; i++){
+			cv::WriteStructContext ws_tis(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+			cv::write(fs, "first", feats[i].first);
+			cv::write(fs, "second", feats[i].second);
+		}
+	}
+	cv::write(fs, "thresholds", thresholds);
+}
 
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+
+//////////////////////////////////// Random Forest ////////////////////////////////////
 
 RFSTrain::RFSTrain(const TrainingParameters &tp) : training_parameters(tp)
 {
@@ -267,7 +288,7 @@ void RFSTrain::Regress(int index_lm, int index_reg,
 }
 
 void RFSTrain::Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
-	const DataPoint &data, float *bin_feat) const
+	const DataPoint &data, vector<bool> &bin_feat) const
 {
 	for (int i = 0; i < training_parameters.num_trees; i++){
 		rtrees[i].Apply(i, index_lm, mean_shape, data, bin_feat);
@@ -276,7 +297,14 @@ void RFSTrain::Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
 
 void RFSTrain::write(cv::FileStorage &fs)const
 {
-	cv::WriteStructContext ws_fern(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
+	cv::write(fs, "", rtrees);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+void write(cv::FileStorage& fs, const string&, const RTreeTrain &t)
+{
+	t.write(fs);
 }
 
 void write(cv::FileStorage& fs, const string&, const RFSTrain &f)
