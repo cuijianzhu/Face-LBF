@@ -78,6 +78,9 @@ TrainingParameters ReadParameters(const string &filename)
 		result.num_trees = stoi(items.at("num_trees"));
 		if (result.num_trees <= 0)
 			throw invalid_argument("num_trees must be positive.");
+		result.overlap_ratio = stof(items.at("overlap_ratio"));
+		if (result.overlap_ratio <= 0 || result.overlap_ratio >= 1)
+			throw invalid_argument("overlap_ratio must be in (0,1).");
 		result.num_feats = stoi(items.at("num_feats"));
 		if (result.num_feats <= 0)
 			throw invalid_argument("num_feats must be positive.");

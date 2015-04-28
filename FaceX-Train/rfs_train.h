@@ -27,6 +27,7 @@
 #include<opencv2/core/core.hpp>
 
 #include "utils_train.h"
+#include "liblinear/linear.h"
 
 
 struct RTreeTrain{
@@ -35,6 +36,8 @@ struct RTreeTrain{
 		std::vector<std::vector<cv::Point2d>> *targets,
 		const std::vector<DataPoint> & training_data,
 		const std::pair<int, int> &data_range);
+	void Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
+		const DataPoint &data, feature_node* bin_feat_node) const;
 	void Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
 		const DataPoint &data, std::vector<bool> &bin_feat) const;
 	void write(cv::FileStorage &fs)const;
@@ -54,6 +57,8 @@ struct RFSTrain
 		const std::vector<cv::Point2d> &mean_shape,
 		std::vector<std::vector<cv::Point2d>> *targets,
 		const std::vector<DataPoint> & training_data);
+	void Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
+		const DataPoint &data, feature_node* bin_feat) const;
 	void Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
 		const DataPoint &data, std::vector<bool> &bin_feat) const;
 

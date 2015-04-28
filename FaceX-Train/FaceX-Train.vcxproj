@@ -155,6 +155,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="liblinear\blas\daxpy.c" />
+    <ClCompile Include="liblinear\blas\ddot.c" />
+    <ClCompile Include="liblinear\blas\dnrm2.c" />
+    <ClCompile Include="liblinear\blas\dscal.c" />
+    <ClCompile Include="liblinear\linear.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"> /D _CRT_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="liblinear\tron.cpp" />
     <ClCompile Include="rfs_train.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
@@ -165,6 +173,10 @@
     <ClCompile Include="utils_train.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="liblinear\blas\blas.h" />
+    <ClInclude Include="liblinear\blas\blasp.h" />
+    <ClInclude Include="liblinear\linear.h" />
+    <ClInclude Include="liblinear\tron.h" />
     <ClInclude Include="rfs_train.h" />
     <ClInclude Include="regressor_train.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>

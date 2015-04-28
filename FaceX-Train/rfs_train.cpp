@@ -56,6 +56,7 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 	int num_nodes_split = (num_nodes - 1) / 2;
 	for (int idx_node = 0; idx_node < num_nodes_split; ++idx_node)
 	{
+		cout << ".";
 		if (data_node[idx_node].empty())
 		{
 			thresholds[idx_node] = 0;
@@ -195,10 +196,18 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 				data_node[2*idx_node+2].push_back(i);
 		}
 	}
+	//check how the samples are distributed
+	/*cout << "-------------------------data in final node:" << endl;
+	for (int i = 0; i < data_node[num_nodes-1].size(); ++i)
+	{
+		cout << "x: " << (*targets)[data_node[num_nodes-1][i]][index_lm].x;
+		cout << ", y: " << (*targets)[data_node[num_nodes-1][i]][index_lm].y << endl;
+	}
+	cout << "----------------------------------------end" << endl << endl;*/
 }
 
 void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
-	const DataPoint &data, vector<bool> &bin_feat) const
+	const DataPoint &data, feature_node* bin_feat_node) const
 {
 	int num_nodes_split = (num_nodes - 1) / 2;
 	int idx_node = 0;
@@ -207,8 +216,8 @@ void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point
 		double feat;
 		Transform t = Procrustes(data.init_shape, mean_shape);
 		vector<cv::Point2d> offset_pair(2);
-		offset_pair.push_back(feats[idx_node].first);
-		offset_pair.push_back(feats[idx_node].second);
+		offset_pair[0] = feats[idx_node].first;
+		offset_pair[1] = feats[idx_node].second;
 		t.Apply(&offset_pair, false);
 
 		cv::Point feat_pos_first = data.init_shape[index_lm] + offset_pair[0];
@@ -229,11 +238,54 @@ void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point
 		throw out_of_range("idx_node is greater than or equal to num_nodes during appling the tree");
 	// calculate the index of this leaf node in the binary feature vector
 	int num_leaves = num_nodes - num_nodes_split;
-	int bool_index = index_lm * training_parameters.num_trees * num_leaves
+	int index_tree_all = index_lm * training_parameters.num_trees + index_tree;
+	int index_bool = index_lm * training_parameters.num_trees * num_leaves
 		+ index_tree * num_leaves + idx_node - (num_nodes - num_leaves);
-	if (bool_index > training_parameters.landmark_count * training_parameters.num_trees * num_leaves)
-		throw out_of_range("bool index is out of the range of bin_feat during appling the tree");
-	bin_feat[bool_index] = 1;
+	if (index_bool > training_parameters.landmark_count * training_parameters.num_trees * num_leaves)
+		throw out_of_range("index_bool is out of the range of bin_feat during appling the tree");
+	bin_feat_node[index_tree_all].index = index_bool;
+	bin_feat_node[index_tree_all].value = 1;
+}
+
+
+void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
+	const DataPoint &data, vector<bool> &bin_feat) const
+{
+	int num_nodes_split = (num_nodes - 1) / 2;
+	int idx_node = 0;
+	while (idx_node < num_nodes_split){
+		// get the feature and go ahead
+		double feat;
+		Transform t = Procrustes(data.init_shape, mean_shape);
+		vector<cv::Point2d> offset_pair(2);
+		offset_pair[0] = feats[idx_node].first;
+		offset_pair[1] = feats[idx_node].second;
+		t.Apply(&offset_pair, false);
+
+		cv::Point feat_pos_first = data.init_shape[index_lm] + offset_pair[0];
+		cv::Point feat_pos_second = data.init_shape[index_lm] + offset_pair[1];
+		if (feat_pos_first.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))
+			&& feat_pos_second.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+		{
+			feat = data.image.at<uchar>(feat_pos_first)
+				-data.image.at<uchar>(feat_pos_second);
+		}
+		else
+			feat = 0;
+
+		if (feat < thresholds[idx_node]) idx_node = 2 * idx_node + 1;
+		else idx_node = 2 * idx_node + 2;
+	}
+	if (idx_node >= num_nodes)
+		throw out_of_range("idx_node is greater than or equal to num_nodes during appling the tree");
+	// calculate the index of this leaf node in the binary feature vector
+	int num_leaves = num_nodes - num_nodes_split;
+	int index_tree_all = index_lm * training_parameters.num_trees + index_tree;
+	int index_bool = index_lm * training_parameters.num_trees * num_leaves
+		+ index_tree * num_leaves + idx_node - (num_nodes - num_leaves);
+	if (index_bool > training_parameters.landmark_count * training_parameters.num_trees * num_leaves)
+		throw out_of_range("index_bool is out of the range of bin_feat during appling the tree");
+	bin_feat[index_bool] = 1;
 }
 
 void RTreeTrain::write(cv::FileStorage &fs)const
@@ -267,23 +319,34 @@ void RFSTrain::Regress(int index_lm, int index_reg,
 	std::vector<std::vector<cv::Point2d>> *targets,
 	const std::vector<DataPoint> & training_data)
 {
-	//dispatch the samples for each tree;
+	//distribute the samples among trees;
 	int nt = training_parameters.num_trees;
+	float or = training_parameters.overlap_ratio;
+	int division = (int)(training_data.size() / ((1 - or)*training_parameters.num_trees));
+	//int division = 80;
 	vector<pair<int, int>> data_range(nt);
 	if (training_data.size() < nt)
 		throw invalid_argument("The number of samples should be larger than NumTree");
 	for (int i = 0; i < nt; i++)
 	{
-		//we have no overlap ratio
 		int is = training_data.size() / nt * i;
-		int ie = training_data.size() / nt * (i + 1);
-		if (i == nt - 1) ie = training_data.size();
+		int ie = is + division;
+		if (ie > training_data.size()) ie = training_data.size();
 		data_range[i].first = is;
 		data_range[i].second = ie;
 	}
+	
 	for (int i = 0; i < nt; i++)
 	{
 		rtrees[i].Regress(index_lm, index_reg, mean_shape, targets, training_data, data_range[i]);
+	}
+}
+
+void RFSTrain::Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
+	const DataPoint &data, feature_node* bin_feat_node) const
+{
+	for (int i = 0; i < training_parameters.num_trees; i++){
+		rtrees[i].Apply(i, index_lm, mean_shape, data, bin_feat_node);
 	}
 }
 
@@ -294,6 +357,7 @@ void RFSTrain::Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
 		rtrees[i].Apply(i, index_lm, mean_shape, data, bin_feat);
 	}
 }
+
 
 void RFSTrain::write(cv::FileStorage &fs)const
 {

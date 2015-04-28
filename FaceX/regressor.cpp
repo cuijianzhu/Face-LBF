@@ -48,30 +48,36 @@ vector<cv::Point2d> Regressor::Apply(cv::Mat &image,
 		mat_feat.at<float>(0, i) = bin_feat[i];
 	}
 	for (int i = 0; i < mean_shape.size(); ++i){
-		offset[i].x = svm_regressors[2 * i].predict(mat_feat);
-		offset[i].y = svm_regressors[2 * i + 1].predict(mat_feat);
+		offset[i] = cv::Point2d(0, 0);
+		for (int j = 0; j < feat_length; j++){
+			offset[i].x += bin_feat[j] * glb_weight[j][2 * i];
+			offset[i].y += bin_feat[j] * glb_weight[j][2 * i + 1];
+		}
+		cout << offset[i].x << " ";
 	}
+	cout << endl;
 	return offset;
 }
 void Regressor::read(const cv::FileNode &fn)
 {
-	forests.clear();
 	fn["feat_length"] >> feat_length;
+
 	cv::FileNode forests_node = fn["forests"];
+	forests.resize(forests_node.size());
+	int idx = 0;
 	for (auto it = forests_node.begin(); it != forests_node.end(); ++it)
 	{
-		RFS forest;
-		*it >> forest;
-		forests.push_back(forest);
+		*it >> forests[idx];
+		idx++;
 	}
-	cv::FileNode svm_node = fn["svm_regressors"];
-	svm_regressors = new CvSVM[svm_node.size()];
-	int idx = 0;
-	for (auto it = svm_node.begin(); it != svm_node.end(); ++it)
+
+	cv::FileNode glb_weight_node = fn["glb_weight"];
+	glb_weight.resize(glb_weight_node.size());
+	idx = 0;
+	for (auto it = glb_weight_node.begin(); it != glb_weight_node.end(); ++it)
 	{
-		// *it >> svm_regressors[idx];
-		svm_regressors[idx].read(const_cast<CvFileStorage*>((*it).fs), const_cast<CvFileNode*>((*it).node));
-		++idx;
+		*it >> glb_weight[idx];
+		idx++;
 	}
 }
 

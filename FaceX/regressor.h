@@ -44,8 +44,8 @@ public:
 
 private:
 	int feat_length;
+	std::vector<std::vector<double>> glb_weight;
 	std::vector<RFS> forests;
-	CvSVM* svm_regressors;
 };
 
 void read(const cv::FileNode& node, Regressor& r, 

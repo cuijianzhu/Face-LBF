@@ -29,6 +29,7 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 
 #include "utils_train.h"
 #include "rfs_train.h"
+#include "liblinear/linear.h"
 
 class RegressorTrain
 {
@@ -45,12 +46,13 @@ public:
 
 private:
 	int feat_length;
+	int num_trees_all;
 	std::vector<RFSTrain> forests;
 	const TrainingParameters &training_parameters;
-	CvSVM* svm_regressors;
+	std::vector<std::vector<double>> glb_weight;
 
 	void GlobalRegress(std::vector<std::vector<cv::Point2d>> *targets,
-		const std::vector<std::vector<bool>> &bin_feats);
+		feature_node** bin_feats);
 };
 
 void write(cv::FileStorage& fs, const std::string&, const RegressorTrain& r);

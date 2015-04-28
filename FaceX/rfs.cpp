@@ -88,8 +88,8 @@ void RTree::Apply(int num_trees, int num_lm, int index_tree, int index_lm,
 		double feat;
 		Transform t = Procrustes(init_shape, mean_shape);
 		vector<cv::Point2d> offset_pair(2);
-		offset_pair.push_back(feats[idx_node].first);
-		offset_pair.push_back(feats[idx_node].second);
+		offset_pair[0] = feats[idx_node].first;
+		offset_pair[1] = feats[idx_node].second;
 		t.Apply(&offset_pair, false);
 
 		cv::Point feat_pos_first = init_shape[index_lm] + offset_pair[0];

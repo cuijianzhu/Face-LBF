@@ -32,22 +32,6 @@ THE SOFTWARE.
 
 #include "utils.h"
 
-struct Fern
-{
-	void ApplyMini(cv::Mat features, std::vector<double> &coeffs)const;
-
-	void read(const cv::FileNode &fn);
-
-	std::vector<double> thresholds;
-	std::vector<std::pair<int, int>> features_index;
-	std::vector<std::vector<cv::Point2d>> outputs;
-	std::vector<std::vector<std::pair<int, double>>> outputs_mini;
-};
-
-void read(const cv::FileNode& node, Fern& f,
-	const Fern& default_value = Fern());
-
-
 struct RTree
 {
 	void Apply(int num_trees, int num_lm, int index_tree, int index_lm,

@@ -37,92 +37,98 @@ RegressorTrain::RegressorTrain(const TrainingParameters &tp)
 	
 	int num_leaves = pow(2, training_parameters.depth_trees - 1);
 	feat_length = training_parameters.landmark_count * training_parameters.num_trees * num_leaves;
+	num_trees_all = training_parameters.landmark_count * training_parameters.num_trees;
 
-	svm_regressors = new CvSVM[training_parameters.landmark_count * 2];
+	glb_weight = vector<vector<double>>(feat_length, vector<double>(training_parameters.landmark_count * 2));
 }
 
 void RegressorTrain::release()
-{
-	for (int i = 0; i < training_parameters.landmark_count * 2; i++){
-		svm_regressors[i].clear();
-	}
-	// to fix: I can't delete it
-	// delete[] svm_regressors;
+{	
 }
 
 void RegressorTrain::Regress(int index_reg, const vector<cv::Point2d> &mean_shape,
 	vector<vector<cv::Point2d>> *targets,
 	const vector<DataPoint> & training_data)
 {
-	cout << "start training random forest.";
+	cout << "start training " << index_reg+1 << "th regressor:" << endl;
 	for (int i = 0; i < training_parameters.landmark_count; ++i)
+	{
+
+		cout << "training " << i+1 << "th forest";
 		forests[i].Regress(i, index_reg, mean_shape, targets, training_data);
+		cout << endl;
+	}
 
-	cout << "random forest finished, start svm";
-
-	vector<vector<bool>> bin_feats = vector<vector<bool>>(training_data.size(), vector<bool>(feat_length));
+	feature_node** bin_feat_nodes = new feature_node*[training_data.size()];
+	for (int i = 0; i < training_data.size(); ++i)
+	{
+		bin_feat_nodes[i] = new feature_node[num_trees_all + 1];
+	}
 	for (int i = 0; i < training_data.size(); ++i)
 	{
 		for (int j = 0; j < training_parameters.landmark_count; j++)
 		{
-			forests[j].Apply(j, mean_shape, training_data[i], bin_feats[i]);
+			forests[j].Apply(j, mean_shape, training_data[i], bin_feat_nodes[i]);
 		}
+		bin_feat_nodes[i][num_trees_all].index = -1;
+		bin_feat_nodes[i][num_trees_all].value = -1;
 	}
-	/*
-	for (int i = 0; i < training_data.size(); ++i)
-	{
-	bin_feats[i] = new float[feat_length];
-	memset(bin_feats[i], 0, feat_length*sizeof(float));
-	for (int j = 0; j < training_parameters.landmark_count; j++)
-	{
-	forests[j].Apply(j, mean_shape, training_data[i], bin_feats[i]);
-	}
-	}
-	cv::Mat mat_feats(training_data.size(), feat_length, CV_32FC1, bin_feats);
-	for (int i = 0; i < training_data.size(); ++i)
-	{
-	delete[] bin_feats[i];
-	}
-	delete[] bin_feats;
-	}
-	*/
 	
-	GlobalRegress(targets, bin_feats);
+	GlobalRegress(targets, bin_feat_nodes);
 }
 
 void RegressorTrain::GlobalRegress(std::vector<std::vector<cv::Point2d>> *targets,
-	const vector<vector<bool>> &bin_feats)
+	feature_node** bin_feat_nodes)
 {
+	int num_samples = targets->size();
+	int num_lm = (*targets)[0].size();
+	problem* prob = new problem;
+	prob->l = num_samples;
+	prob->n = feat_length;
+	prob->x = bin_feat_nodes;
+	prob->bias = -1;
 
-	cv::Mat mat_feats(bin_feats.size(), bin_feats[0].size(), CV_32FC1);
-	for (int i = 0; i < bin_feats.size(); i++)
-	{
-		for (int j = 0; j < bin_feats[0].size(); j++)
-		{
-			mat_feats.at<float>(i, j) = bin_feats[i][j];
+	parameter* param = new parameter;
+	param->solver_type = L2R_L2LOSS_SVR_DUAL;
+	param->C = 1.0 / num_samples;
+	param->p = 0;
+
+	double** yy = new double*[num_lm * 2];
+
+	for (int i = 0; i < num_lm * 2; i++){
+		yy[i] = new double[num_samples];
+	}
+	for (int i = 0; i < num_lm; i++){
+		for (int j = 0; j<num_samples; j++){
+			yy[2 * i][j] = (*targets)[j][i].x;
+			yy[2 * i + 1][j] = (*targets)[j][i].y;
 		}
 	}
-
-	cv::SVMParams svm_param;
-	svm_param.svm_type = CvSVM::EPS_SVR;
-	svm_param.kernel_type = CvSVM::LINEAR;
-	svm_param.C = 1;
-	svm_param.p = 5e-3;
-	svm_param.term_crit = cvTermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 5e-3);
-
-	for (int i = 0; i < training_parameters.landmark_count; i++)
+	// check the features
+	for (int i = 100; i < 105; i++)
 	{
-		cv::Mat target_single_x = cv::Mat(mat_feats.rows, 1, CV_32FC1);
-		cv::Mat target_single_y = cv::Mat(mat_feats.rows, 1, CV_32FC1);
-		for (int j = 0; j < mat_feats.rows; j++)
+		for (int j = 0; j < num_trees_all; j++)
 		{
-			target_single_x.at<float>(j, 0) = (*targets)[j][i].x;
-			target_single_y.at<float>(j, 0) = (*targets)[j][i].y;
+			cout << "("<< bin_feat_nodes[i][j].index << "," << bin_feat_nodes[i][j].value<<") ";
 		}
-		
-		svm_regressors[2 * i].train(mat_feats, target_single_x, cv::Mat(), cv::Mat(), svm_param);
-		svm_regressors[2 * i + 1].train(mat_feats, target_single_y, cv::Mat(), cv::Mat(), svm_param);
+		cout << endl;
 	}
+	for (int i = 0; i < num_lm * 2; i++)
+	{
+		cout << "Train " << i+1 << "th dimension" << endl;
+		prob->y = yy[i];
+		check_parameter(prob, param);
+		model* lbfmodel = train(prob, param);
+		for (int j = 0; j < feat_length; j++){
+			glb_weight[j][i] = lbfmodel->w[j];
+		}
+		//free_model_content(lbfmodel);
+		delete lbfmodel;
+	}
+	for (int i = 0; i < 2*num_lm; i++){
+		delete[] yy[i];
+	}
+	delete[]  yy;
 }
 
 vector<cv::Point2d> RegressorTrain::Apply(const vector<cv::Point2d> &mean_shape, 
@@ -134,13 +140,13 @@ vector<cv::Point2d> RegressorTrain::Apply(const vector<cv::Point2d> &mean_shape,
 	for (int i = 0; i < training_parameters.landmark_count; ++i){
 		forests[i].Apply(i, mean_shape, data, bin_feat);
 	}
-	cv::Mat mat_feat(1, feat_length, CV_32FC1);
-	for (int i = 0; i < feat_length; i++){
-		mat_feat.at<float>(0, i) = bin_feat[i];
-	}
+	
 	for (int i = 0; i < training_parameters.landmark_count; ++i){
-		offset[i].x = svm_regressors[2 * i].predict(mat_feat);
-		offset[i].y = svm_regressors[2 * i + 1].predict(mat_feat);
+		offset[i] = cv::Point2d(0,0);
+		for (int j = 0; j < feat_length; ++j){
+			offset[i].x += bin_feat[j] * glb_weight[j][2 * i];
+			offset[i].y += bin_feat[j] * glb_weight[j][2 * i + 1];
+		}
 	}
 	return offset;
 }
@@ -151,13 +157,15 @@ void RegressorTrain::write(cv::FileStorage &fs)const
 	cv::WriteStructContext ws_tis(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
 	cv::write(fs, "feat_length", feat_length);
 	cv::write(fs, "forests", forests);
+
+	// the linear models will be saved seperately
 	{
-		cv::WriteStructContext ws_tis(fs, "svm_regressors", CV_NODE_SEQ + CV_NODE_FLOW);
-		for (int i = 0; i < training_parameters.landmark_count * 2; i++)
-		{
-			svm_regressors[i].write(fs.fs, "");
+		cv::WriteStructContext ws_tis(fs, "glb_weight", CV_NODE_SEQ + CV_NODE_FLOW);
+		for (int i = 0; i < glb_weight.size(); ++i){
+			cv::write(fs, "", glb_weight[i]);
 		}
 	}
+	vector<double>();
 	
 }
 

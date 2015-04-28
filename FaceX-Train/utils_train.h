@@ -39,6 +39,7 @@ struct TrainingParameters
 	/* Model parameters */
 	int num_stages = -1;
 	int num_trees = -1;
+	float overlap_ratio = -1;
 	int num_feats = -1;
 	std::vector<double> radius_feats;
 	int depth_trees = -1;

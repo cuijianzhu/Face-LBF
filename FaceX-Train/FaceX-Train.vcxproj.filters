@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="liblinear">
+      <UniqueIdentifier>{b06ca8d7-b08d-41cc-ab1d-4cf42e418faf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils_train.cpp">
@@ -27,6 +30,24 @@
     <ClCompile Include="rfs_train.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="liblinear\linear.cpp">
+      <Filter>liblinear</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\tron.cpp">
+      <Filter>liblinear</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\blas\ddot.c">
+      <Filter>liblinear</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\blas\daxpy.c">
+      <Filter>liblinear</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\blas\dnrm2.c">
+      <Filter>liblinear</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\blas\dscal.c">
+      <Filter>liblinear</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="regressor_train.h">
@@ -37,6 +58,18 @@
     </ClInclude>
     <ClInclude Include="rfs_train.h">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="liblinear\linear.h">
+      <Filter>liblinear</Filter>
+    </ClInclude>
+    <ClInclude Include="liblinear\tron.h">
+      <Filter>liblinear</Filter>
+    </ClInclude>
+    <ClInclude Include="liblinear\blas\blasp.h">
+      <Filter>liblinear</Filter>
+    </ClInclude>
+    <ClInclude Include="liblinear\blas\blas.h">
+      <Filter>liblinear</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

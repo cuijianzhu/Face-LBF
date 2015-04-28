@@ -27,10 +27,13 @@ output_model_pathname: model.xml.gz
 # can use the default value as below.
 
 # The number of top-level stages
-num_stages: 3
+num_stages: 1
 
 # The number of top-level stages
-num_trees: 10
+num_trees: 1
+
+# The overlap ratio when deviding samples among trees
+overlap_ratio: 0.4
 
 # The number of random features generated for each top-level node
 num_feats: 500
@@ -39,10 +42,10 @@ num_feats: 500
 # means features will be generated near the current guessed landmark positions.
 # the number of radiuses should be eqaul to num_stages
 # radius_feats: 0.4 0.3 0.15 0.1 0.06
-radius_feats: 0.4 0.3 0.15
+radius_feats: 0.4
 
 # The Depth of trees
-depth_trees: 4
+depth_trees: 6
 
 # Regularization coefficient
 Beta: 1000
