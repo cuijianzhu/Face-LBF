@@ -4,9 +4,16 @@
 # paths or filenames, and DO NOT mix comments with parameters.
 
 
-# The root path of all training data. There should be a label file named "labels.txt" 
+# The root path of all training data. There should be the label file.
 # which contains landmark labels for the training data. 
-training_data_root: train
+training_data_root: train/
+
+# The name of the label file for training set
+training_data_file: labels.txt
+
+# The name of the label file for testing set
+testing_data_file: test_sm.txt
+
 
 # How many landmarks for each face
 landmark_count: 5
@@ -27,13 +34,13 @@ output_model_pathname: model.xml.gz
 # can use the default value as below.
 
 # The number of top-level stages
-num_stages: 1
+num_stages: 5
 
 # The number of top-level stages
-num_trees: 1
+num_trees: 3
 
 # The overlap ratio when deviding samples among trees
-overlap_ratio: 0.4
+overlap_ratio: 0.3
 
 # The number of random features generated for each top-level node
 num_feats: 500
@@ -42,17 +49,18 @@ num_feats: 500
 # means features will be generated near the current guessed landmark positions.
 # the number of radiuses should be eqaul to num_stages
 # radius_feats: 0.4 0.3 0.15 0.1 0.06
-radius_feats: 0.4
+# radius_feats: 0.4 0.32 0.26 0.22 0.18 0.14 0.12 0.1 0.08 0.06
+radius_feats: 0.4 0.4 0.4 0.4 0.4
 
 # The Depth of trees
-depth_trees: 6
+depth_trees: 4
 
 # Regularization coefficient
 Beta: 1000
 
 # The number of inintialization in testing. Lower value will speed up alignment,
 # but may hurt accuracy
-TestInitShapeCount: 5
+TestInitShapeCount: 1
 
 # Data argumentation factor. Lower value will speed up training, but may hurt
 # accuracy
