@@ -31,6 +31,8 @@ struct TrainingParameters
 {
 	/* General parameters */
 	std::string training_data_root = "";
+	std::string training_data_file = "";
+	std::string testing_data_file = "";
 	int landmark_count = -1;
 	int left_eye_index = -1;
 	int right_eye_index = -1;

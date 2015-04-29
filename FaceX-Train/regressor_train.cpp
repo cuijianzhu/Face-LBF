@@ -50,11 +50,10 @@ void RegressorTrain::Regress(int index_reg, const vector<cv::Point2d> &mean_shap
 	vector<vector<cv::Point2d>> *targets,
 	const vector<DataPoint> & training_data)
 {
-	cout << "start training " << index_reg+1 << "th regressor:" << endl;
 	for (int i = 0; i < training_parameters.landmark_count; ++i)
 	{
 
-		cout << "training " << i+1 << "th forest";
+		cout << "> training landmark " << i+1;
 		forests[i].Regress(i, index_reg, mean_shape, targets, training_data);
 		cout << endl;
 	}
@@ -86,7 +85,7 @@ void RegressorTrain::GlobalRegress(std::vector<std::vector<cv::Point2d>> *target
 	prob->l = num_samples;
 	prob->n = feat_length;
 	prob->x = bin_feat_nodes;
-	prob->bias = -1;
+	prob->bias = 0;
 
 	parameter* param = new parameter;
 	param->solver_type = L2R_L2LOSS_SVR_DUAL;
@@ -105,17 +104,16 @@ void RegressorTrain::GlobalRegress(std::vector<std::vector<cv::Point2d>> *target
 		}
 	}
 	// check the features
-	for (int i = 100; i < 105; i++)
+	/*for (int i = 100; i < 105; i++)
 	{
 		for (int j = 0; j < num_trees_all; j++)
 		{
 			cout << "("<< bin_feat_nodes[i][j].index << "," << bin_feat_nodes[i][j].value<<") ";
 		}
 		cout << endl;
-	}
+	}*/
 	for (int i = 0; i < num_lm * 2; i++)
 	{
-		cout << "Train " << i+1 << "th dimension" << endl;
 		prob->y = yy[i];
 		check_parameter(prob, param);
 		model* lbfmodel = train(prob, param);

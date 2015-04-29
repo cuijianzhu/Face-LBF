@@ -243,7 +243,8 @@ void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point
 		+ index_tree * num_leaves + idx_node - (num_nodes - num_leaves);
 	if (index_bool > training_parameters.landmark_count * training_parameters.num_trees * num_leaves)
 		throw out_of_range("index_bool is out of the range of bin_feat during appling the tree");
-	bin_feat_node[index_tree_all].index = index_bool;
+	// it seems liblinear the index starts from one
+	bin_feat_node[index_tree_all].index = index_bool + 1;
 	bin_feat_node[index_tree_all].value = 1;
 }
 

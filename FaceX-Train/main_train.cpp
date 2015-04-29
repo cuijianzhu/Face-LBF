@@ -60,8 +60,9 @@ TrainingParameters ReadParameters(const string &filename)
 			items[TrimStr(line.substr(0, colon_pos))] = 
 				TrimStr(line.substr(colon_pos + 1));
 		}
-
 		result.training_data_root = items.at("training_data_root");
+		result.training_data_file = items.at("training_data_file");
+		result.testing_data_file = items.at("testing_data_file");
 		result.landmark_count = stoi(items.at("landmark_count"));
 		if (result.landmark_count <= 0)
 			throw invalid_argument("landmark_count must be positive.");
@@ -114,9 +115,9 @@ TrainingParameters ReadParameters(const string &filename)
 	return result;
 }
 
-vector<DataPoint> GetTrainingData(const TrainingParameters &tp)
+vector<DataPoint> GetData(const TrainingParameters &tp, const string filename)
 {
-	const string label_pathname = tp.training_data_root + "/labels.txt";
+	const string label_pathname = tp.training_data_root + filename;
 	ifstream fin(label_pathname);
 	if (!fin)
 		throw runtime_error("Cannot open label file " + label_pathname + " (Pay attention to path separator!)");
@@ -232,7 +233,18 @@ vector<vector<cv::Point2d>> ComputeNormalizedTargets(
 	return result;
 }
 
-void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters &tp)
+double EstimateError(const TrainingParameters &tp, vector<vector<cv::Point2d>> &target){
+	double error_sum = 0;
+	for (int i = 0; i < target.size(); i++){
+		for (int j = 0; j < target[0].size(); j++){
+			error_sum += target[i][j].x*target[i][j].x + target[i][j].y*target[i][j].y;
+		}
+	}
+	return error_sum / (target.size() * target[0].size());
+}
+
+void TrainModel(const vector<DataPoint> &training_data,
+	vector<DataPoint> &testing_data, const TrainingParameters &tp)
 {
 	cout << "Training data count: " << training_data.size() << endl;
 
@@ -248,15 +260,27 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	vector<DataPoint> augmented_training_data = 
 		AugmentData(training_data, tp.AugmentDataFactor); 
 	
+	// test
+	/*for (int i = 0; i < augmented_training_data.size(); i++){
+		augmented_training_data[i].init_shape = MapShape(cv::Rect(0, 0, 1, 1), 
+			test_init_shapes[0], augmented_training_data[i].face_rect);
+	}*/
+
 	vector<RegressorTrain> stage_regressors(tp.num_stages, RegressorTrain(tp));
+	vector<double> errors(tp.num_stages+1);
 	for (int i = 0; i < tp.num_stages; ++i)
 	{
+		cout << endl << "==================== regressor " << i + 1 << " ====================" << endl;
 		long long s = cv::getTickCount();
 
 		vector<vector<cv::Point2d>> normalized_targets = 
 			ComputeNormalizedTargets(mean_shape, augmented_training_data);
+		errors[i] = EstimateError(tp, normalized_targets);
+
 		stage_regressors[i].Regress(i, mean_shape, &normalized_targets, 
 			augmented_training_data);
+		
+		cout << ">> Applying the regress result... "<<endl;
 		for (DataPoint &dp : augmented_training_data)
 		{
 			vector<cv::Point2d> offset = 
@@ -270,6 +294,38 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 			<< (cv::getTickCount() - s) / cv::getTickFrequency() 
 			<< "s. " << tp.num_stages << " in total." << endl;
 	}
+	
+	// estimate the errors for each stage and for test set
+	vector<vector<cv::Point2d>> normalized_targets =
+		ComputeNormalizedTargets(mean_shape, augmented_training_data);
+	errors[tp.num_stages] = EstimateError(tp, normalized_targets);
+	cout << endl << "=================== errors ===================" << endl;
+	for (int i = 0; i < tp.num_stages + 1; ++i)
+	{
+		cout << "train set error after " << i << " stages: " << errors[i] << endl;
+	}
+	
+	cout << "test set size : " << testing_data.size() << endl;
+	for (int i = 0; i < testing_data.size(); i++){
+		testing_data[i].init_shape = MapShape(cv::Rect(0, 0, 1, 1),
+			test_init_shapes[0], testing_data[i].face_rect);
+	}
+	for (int i = 0; i < tp.num_stages; ++i)
+	{
+		for (DataPoint &dp : testing_data)
+		{
+			vector<cv::Point2d> offset =
+				stage_regressors[i].Apply(mean_shape, dp);
+			Transform t = Procrustes(dp.init_shape, mean_shape);
+			t.Apply(&offset, false);
+			dp.init_shape = ShapeAdjustment(dp.init_shape, offset);
+		}
+	}
+	vector<vector<cv::Point2d>> test_reduals =
+		ComputeNormalizedTargets(mean_shape, testing_data);
+	double error_test = EstimateError(tp, test_reduals);
+	cout << "test set error : " << error_test << endl;
+	cout << "============================================" << endl;
 
 	cv::FileStorage model_file;
 	model_file.open(tp.output_model_pathname, cv::FileStorage::WRITE);
@@ -291,6 +347,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	}
 }
 
+
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
@@ -299,18 +356,18 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	if (true)
+	try
 	{
 		TrainingParameters tp = ReadParameters(argv[1]);
 		cout << "Training begin." << endl;
-		vector<DataPoint> training_data = GetTrainingData(tp);
-		TrainModel(training_data, tp);
+		vector<DataPoint> training_data = GetData(tp, tp.training_data_file);
+		vector<DataPoint> testing_data = GetData(tp, tp.testing_data_file);
+		TrainModel(training_data, testing_data, tp);
 	}
-	/*
 	catch (const exception &e)
 	{
 		cout << e.what() << endl;
+		system("pause");
 		return -1;
 	}
-	*/
 }
