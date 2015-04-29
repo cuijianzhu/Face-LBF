@@ -2,7 +2,7 @@
 FaceX-Train is a tool to train model file for FaceX, which is an open
 source face alignment library.
 
-Copyright(C) 2014  Yang Cao
+Copyright(C) 2014  Yichun Shi
 
 This program is free software : you can redistribute it and / or modify
 it under the terms of the GNU General Public License as published by
@@ -196,14 +196,6 @@ void RTreeTrain::Regress(int index_lm, int index_reg, const std::vector<cv::Poin
 				data_node[2*idx_node+2].push_back(i);
 		}
 	}
-	//check how the samples are distributed
-	/*cout << "-------------------------data in final node:" << endl;
-	for (int i = 0; i < data_node[num_nodes-1].size(); ++i)
-	{
-		cout << "x: " << (*targets)[data_node[num_nodes-1][i]][index_lm].x;
-		cout << ", y: " << (*targets)[data_node[num_nodes-1][i]][index_lm].y << endl;
-	}
-	cout << "----------------------------------------end" << endl << endl;*/
 }
 
 void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
