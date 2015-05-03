@@ -44,7 +44,7 @@ public:
 
 private:
 	int feat_length;
-	std::vector<std::vector<double>> glb_weight;
+	cv::Mat w;
 	std::vector<RFS> forests;
 };
 

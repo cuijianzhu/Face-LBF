@@ -192,4 +192,5 @@ FakesAssemblies/
 
 # build x64
 **/Debug
+**/Release
 **/x64

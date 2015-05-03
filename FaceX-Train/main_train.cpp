@@ -57,7 +57,7 @@ TrainingParameters ReadParameters(const string &filename)
 					" in config file " + filename);
 			}
 
-			items[TrimStr(line.substr(0, colon_pos))] = 
+			items[TrimStr(line.substr(0, colon_pos))] =
 				TrimStr(line.substr(colon_pos + 1));
 		}
 		result.training_data_root = items.at("training_data_root");
@@ -94,7 +94,7 @@ TrainingParameters ReadParameters(const string &filename)
 			if (radius < 0.01 || radius > 1)
 				throw out_of_range("radius_feats must be in [0.01, 1].");
 		}
-		if (result.radius_feats.size() != result.num_stages )
+		if (result.radius_feats.size() != result.num_stages)
 			throw out_of_range("the number of radius_feats must be equal to num_stage");
 		result.depth_trees = stoi(items.at("depth_trees"));
 		if (result.depth_trees <= 0)
@@ -170,8 +170,8 @@ vector<vector<cv::Point2d>> CreateTestInitShapes(
 		}
 	}
 	cv::Mat labels, centers;
-	cv::kmeans(all_landmarks, tp.TestInitShapeCount, labels, 
-		cv::TermCriteria(cv::TermCriteria::COUNT, 50, 0), 
+	cv::kmeans(all_landmarks, tp.TestInitShapeCount, labels,
+		cv::TermCriteria(cv::TermCriteria::COUNT, 50, 0),
 		10, cv::KMEANS_RANDOM_CENTERS | cv::KMEANS_PP_CENTERS, centers);
 
 	vector<vector<cv::Point2d>> result;
@@ -210,7 +210,7 @@ vector<DataPoint> AugmentData(const vector<DataPoint> &training_data, int factor
 		for (int j = i * factor; j < (i + 1) * factor; ++j, ++it)
 		{
 			result[j] = training_data[i];
-			result[j].init_shape = MapShape(training_data[*it].face_rect, 
+			result[j].init_shape = MapShape(training_data[*it].face_rect,
 				training_data[*it].landmarks, result[j].face_rect);
 		}
 	}
@@ -237,7 +237,7 @@ double EstimateError(const TrainingParameters &tp, vector<vector<cv::Point2d>> &
 	double error_sum = 0;
 	for (int i = 0; i < target.size(); i++){
 		for (int j = 0; j < target[0].size(); j++){
-			error_sum += target[i][j].x*target[i][j].x + target[i][j].y*target[i][j].y;
+			error_sum += sqrt(target[i][j].x*target[i][j].x + target[i][j].y*target[i][j].y);
 		}
 	}
 	return error_sum / (target.size() * target[0].size());
@@ -253,65 +253,68 @@ void TrainModel(const vector<DataPoint> &training_data,
 		shapes.push_back(dp.landmarks);
 
 	vector<cv::Point2d> mean_shape = MeanShape(shapes, tp);
-	
-	vector<vector<cv::Point2d>> test_init_shapes = 
+
+	vector<vector<cv::Point2d>> test_init_shapes =
 		CreateTestInitShapes(training_data, tp);
 
-	vector<DataPoint> augmented_training_data = 
-		AugmentData(training_data, tp.AugmentDataFactor); 
-	
-	// test
-	/*for (int i = 0; i < augmented_training_data.size(); i++){
-		augmented_training_data[i].init_shape = MapShape(cv::Rect(0, 0, 1, 1), 
-			test_init_shapes[0], augmented_training_data[i].face_rect);
-	}*/
+	vector<DataPoint> augmented_training_data =
+		AugmentData(training_data, tp.AugmentDataFactor);
 
+
+	/***** regress the model *****/
 	vector<RegressorTrain> stage_regressors(tp.num_stages, RegressorTrain(tp));
-	vector<double> errors(tp.num_stages+1);
+	vector<double> errors(tp.num_stages + 1);
+
 	for (int i = 0; i < tp.num_stages; ++i)
 	{
 		cout << endl << "==================== regressor " << i + 1 << " ====================" << endl;
 		long long s = cv::getTickCount();
 
-		vector<vector<cv::Point2d>> normalized_targets = 
+		vector<vector<cv::Point2d>> normalized_targets =
 			ComputeNormalizedTargets(mean_shape, augmented_training_data);
 		errors[i] = EstimateError(tp, normalized_targets);
 
-		stage_regressors[i].Regress(i, mean_shape, &normalized_targets, 
+		stage_regressors[i].Regress(i, mean_shape, &normalized_targets,
 			augmented_training_data);
-		
-		cout << ">> Applying the regress result... "<<endl;
+
+		cout << ">> Applying the regress result... " << endl;
 		for (DataPoint &dp : augmented_training_data)
 		{
-			vector<cv::Point2d> offset = 
+			vector<cv::Point2d> offset =
 				stage_regressors[i].Apply(mean_shape, dp);
 			Transform t = Procrustes(dp.init_shape, mean_shape);
 			t.Apply(&offset, false);
 			dp.init_shape = ShapeAdjustment(dp.init_shape, offset);
 		}
 
-		cout << "(^_^) Finish training " << i + 1 << " regressor. Using " 
-			<< (cv::getTickCount() - s) / cv::getTickFrequency() 
+		cout << "(^_^) Finish training " << i + 1 << " regressor. Using "
+			<< (cv::getTickCount() - s) / cv::getTickFrequency()
 			<< "s. " << tp.num_stages << " in total." << endl;
 	}
-	
-	// estimate the errors for each stage and for test set
-	vector<vector<cv::Point2d>> normalized_targets =
-		ComputeNormalizedTargets(mean_shape, augmented_training_data);
-	errors[tp.num_stages] = EstimateError(tp, normalized_targets);
+
+	/***** estimate the error *****/
 	cout << endl << "=================== errors ===================" << endl;
+	// train set errors
+	vector<vector<cv::Point2d>> normalized_residual_train =
+		ComputeNormalizedTargets(mean_shape, augmented_training_data);
+	errors[tp.num_stages] = EstimateError(tp, normalized_residual_train);
 	for (int i = 0; i < tp.num_stages + 1; ++i)
 	{
 		cout << "train set error after " << i << " stages: " << errors[i] << endl;
 	}
-	
+	//test set errors
 	cout << "test set size : " << testing_data.size() << endl;
 	for (int i = 0; i < testing_data.size(); i++){
 		testing_data[i].init_shape = MapShape(cv::Rect(0, 0, 1, 1),
 			test_init_shapes[0], testing_data[i].face_rect);
 	}
+	vector<double> test_errors(tp.num_stages + 1);
 	for (int i = 0; i < tp.num_stages; ++i)
 	{
+		vector<vector<cv::Point2d>> normalized_targets =
+			ComputeNormalizedTargets(mean_shape, testing_data);
+		test_errors[i] = EstimateError(tp, normalized_targets);
+
 		for (DataPoint &dp : testing_data)
 		{
 			vector<cv::Point2d> offset =
@@ -321,30 +324,28 @@ void TrainModel(const vector<DataPoint> &training_data,
 			dp.init_shape = ShapeAdjustment(dp.init_shape, offset);
 		}
 	}
-	vector<vector<cv::Point2d>> test_reduals =
+	vector<vector<cv::Point2d>> normalized_residual_test =
 		ComputeNormalizedTargets(mean_shape, testing_data);
-	double error_test = EstimateError(tp, test_reduals);
-	cout << "test set error : " << error_test << endl;
+	test_errors[tp.num_stages] = EstimateError(tp, normalized_residual_test);
+	for (int i = 0; i < tp.num_stages + 1; ++i)
+	{
+		cout << "test set error after " << i << " stages: " << test_errors[i] << endl;
+	}
 	cout << "============================================" << endl;
 
+
+	/***** store the model *****/
+	// Because there is something wrong with operator << on my PC, I turn to write() instead.
 	cv::FileStorage model_file;
 	model_file.open(tp.output_model_pathname, cv::FileStorage::WRITE);
-	// Because there is something wrong with operator << on my PC, I turn to write() instead.
 	write(model_file, "mean_shape", mean_shape);
 	{
-		// WriteStructContext is the function to descend to a lower level of XML Node.
-		// It is classified by MAP and SEQ, and the nodes of SEQ don't have names.
 		cv::WriteStructContext ws_tis(model_file, "test_init_shapes", CV_NODE_SEQ + CV_NODE_FLOW);
 		for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
 			write(model_file, "", *it);
 	}
 	write(model_file, "stage_regressors", stage_regressors);
 	model_file.release();
-	
-	for (int i = 0; i < tp.num_stages; ++i)
-	{
-		stage_regressors[i].release();
-	}
 }
 
 

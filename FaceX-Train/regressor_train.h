@@ -34,8 +34,8 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 class RegressorTrain
 {
 public:
+	cv::Mat w;
 	RegressorTrain(const TrainingParameters &tp);
-	void release();
 	void Regress(int index_reg, const std::vector<cv::Point2d> &mean_shape,
 		std::vector<std::vector<cv::Point2d>> *targets,
 		const std::vector<DataPoint> & training_data);
@@ -49,7 +49,6 @@ private:
 	int num_trees_all;
 	std::vector<RFSTrain> forests;
 	const TrainingParameters &training_parameters;
-	std::vector<std::vector<double>> glb_weight;
 
 	void GlobalRegress(std::vector<std::vector<cv::Point2d>> *targets,
 		feature_node** bin_feats);

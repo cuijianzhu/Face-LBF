@@ -39,7 +39,7 @@ struct RTreeTrain{
 	void Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
 		const DataPoint &data, feature_node* bin_feat_node) const;
 	void Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
-		const DataPoint &data, std::vector<bool> &bin_feat) const;
+		const DataPoint &data, cv::Mat &bin_feat) const;
 	void write(cv::FileStorage &fs)const;
 
 private:
@@ -58,9 +58,9 @@ struct RFSTrain
 		std::vector<std::vector<cv::Point2d>> *targets,
 		const std::vector<DataPoint> & training_data);
 	void Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
-		const DataPoint &data, feature_node* bin_feat) const;
+		const DataPoint &data, feature_node* bin_feat_node) const;
 	void Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
-		const DataPoint &data, std::vector<bool> &bin_feat) const;
+		const DataPoint &data, cv::Mat &bin_feat) const;
 
 	void write(cv::FileStorage &fs)const;
 

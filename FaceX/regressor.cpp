@@ -37,25 +37,28 @@ vector<cv::Point2d> Regressor::Apply(cv::Mat &image,
 	const vector<cv::Point2d> &mean_shape,
 	const vector<cv::Point2d> &init_shape) const
 {
+	cv::Mat bin_feat = cv::Mat::zeros(1, feat_length, CV_32FC1);
+	cv::Mat mat_offset(1, 2 * mean_shape.size(), CV_32FC1);
 	vector<cv::Point2d> offset(mean_shape.size());
-
-	vector<bool> bin_feat = vector<bool>(feat_length);
+	
+	// derive binary feature
+	long long time = cv::getTickCount();
 	for (int i = 0; i < mean_shape.size(); ++i){
 		forests[i].Apply(mean_shape.size(), i, image, mean_shape, init_shape, bin_feat);
 	}
-	cv::Mat mat_feat(1, feat_length, CV_32FC1);
-	for (int i = 0; i < feat_length; i++){
-		mat_feat.at<float>(0, i) = bin_feat[i];
-	}
+	cout << "Deriving binary feature uses "
+		<< ((cv::getTickCount() - time) / cv::getTickFrequency()) << "s" << endl;
+	
+	// apply global model
+	time = cv::getTickCount();
+	mat_offset = bin_feat * w;
 	for (int i = 0; i < mean_shape.size(); ++i){
-		offset[i] = cv::Point2d(0, 0);
-		for (int j = 0; j < feat_length; j++){
-			offset[i].x += bin_feat[j] * glb_weight[j][2 * i];
-			offset[i].y += bin_feat[j] * glb_weight[j][2 * i + 1];
-		}
-		cout << offset[i].x << " ";
+		offset[i].x = mat_offset.at<float>(0,2 * i);
+		offset[i].y = mat_offset.at<float>(0, 2 * i + 1);
 	}
-	cout << endl;
+	cout << "Applying global model uses "
+		<< ((cv::getTickCount() - time) / cv::getTickFrequency()) << "s" << endl;
+	
 	return offset;
 }
 void Regressor::read(const cv::FileNode &fn)
@@ -71,14 +74,8 @@ void Regressor::read(const cv::FileNode &fn)
 		idx++;
 	}
 
-	cv::FileNode glb_weight_node = fn["glb_weight"];
-	glb_weight.resize(glb_weight_node.size());
-	idx = 0;
-	for (auto it = glb_weight_node.begin(); it != glb_weight_node.end(); ++it)
-	{
-		*it >> glb_weight[idx];
-		idx++;
-	}
+	cv::FileNode w_node = fn["w"];
+	w_node >> w;
 }
 
 void read(const cv::FileNode& node, Regressor& r, const Regressor& default_value)

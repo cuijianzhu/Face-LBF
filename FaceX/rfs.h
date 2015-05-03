@@ -36,7 +36,7 @@ struct RTree
 {
 	void Apply(int num_trees, int num_lm, int index_tree, int index_lm,
 		const cv::Mat &image, const std::vector<cv::Point2d> &mean_shape, 
-		const std::vector<cv::Point2d> &init_shape, std::vector<bool> &bin_feat) const;
+		const std::vector<cv::Point2d> &init_shape, cv::Mat &bin_feat) const;
 	void read(const cv::FileNode &fn);
 
 	int depth;
@@ -50,7 +50,7 @@ struct RFS
 	void Apply(int num_lm, int index_lm, const cv::Mat &image, 
 		const std::vector<cv::Point2d> &mean_shape, 
 		const std::vector<cv::Point2d> &init_shape,
-		std::vector<bool> &bin_feat) const;
+		cv::Mat &bin_feat) const;
 	
 	void read(const cv::FileNode &fn);
 

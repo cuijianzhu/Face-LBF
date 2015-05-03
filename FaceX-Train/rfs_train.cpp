@@ -242,7 +242,7 @@ void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point
 
 
 void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point2d> &mean_shape,
-	const DataPoint &data, vector<bool> &bin_feat) const
+	const DataPoint &data, cv::Mat &bin_feat) const
 {
 	int num_nodes_split = (num_nodes - 1) / 2;
 	int idx_node = 0;
@@ -278,7 +278,7 @@ void RTreeTrain::Apply(int index_tree, int index_lm, const std::vector<cv::Point
 		+ index_tree * num_leaves + idx_node - (num_nodes - num_leaves);
 	if (index_bool > training_parameters.landmark_count * training_parameters.num_trees * num_leaves)
 		throw out_of_range("index_bool is out of the range of bin_feat during appling the tree");
-	bin_feat[index_bool] = 1;
+	bin_feat.at<float>(0, index_bool) = 1;
 }
 
 void RTreeTrain::write(cv::FileStorage &fs)const
@@ -322,7 +322,7 @@ void RFSTrain::Regress(int index_lm, int index_reg,
 		throw invalid_argument("The number of samples should be larger than NumTree");
 	for (int i = 0; i < nt; i++)
 	{
-		int is = training_data.size() / nt * i;
+		int is = nt ? ((training_data.size() - division) / (nt - 1)*i) : 0;
 		int ie = is + division;
 		if (ie > training_data.size()) ie = training_data.size();
 		data_range[i].first = is;
@@ -344,7 +344,7 @@ void RFSTrain::Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
 }
 
 void RFSTrain::Apply(int index_lm, const std::vector<cv::Point2d> &mean_shape,
-	const DataPoint &data, vector<bool> &bin_feat) const
+	const DataPoint &data, cv::Mat &bin_feat) const
 {
 	for (int i = 0; i < training_parameters.num_trees; i++){
 		rtrees[i].Apply(i, index_lm, mean_shape, data, bin_feat);

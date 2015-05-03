@@ -38,13 +38,8 @@ RegressorTrain::RegressorTrain(const TrainingParameters &tp)
 	int num_leaves = pow(2, training_parameters.depth_trees - 1);
 	feat_length = training_parameters.landmark_count * training_parameters.num_trees * num_leaves;
 	num_trees_all = training_parameters.landmark_count * training_parameters.num_trees;
-
-	glb_weight = vector<vector<double>>(feat_length, vector<double>(training_parameters.landmark_count * 2));
 }
 
-void RegressorTrain::release()
-{	
-}
 
 void RegressorTrain::Regress(int index_reg, const vector<cv::Point2d> &mean_shape,
 	vector<vector<cv::Point2d>> *targets,
@@ -103,24 +98,17 @@ void RegressorTrain::GlobalRegress(std::vector<std::vector<cv::Point2d>> *target
 			yy[2 * i + 1][j] = (*targets)[j][i].y;
 		}
 	}
-	// check the features
-	/*for (int i = 100; i < 105; i++)
-	{
-		for (int j = 0; j < num_trees_all; j++)
-		{
-			cout << "("<< bin_feat_nodes[i][j].index << "," << bin_feat_nodes[i][j].value<<") ";
-		}
-		cout << endl;
-	}*/
+	// w can't be initialized in construct functio
+	// otherwise w in different stage will point to one data address
+	w.create(feat_length, training_parameters.landmark_count * 2, CV_32FC1);
 	for (int i = 0; i < num_lm * 2; i++)
 	{
 		prob->y = yy[i];
 		check_parameter(prob, param);
 		model* lbfmodel = train(prob, param);
 		for (int j = 0; j < feat_length; j++){
-			glb_weight[j][i] = lbfmodel->w[j];
+			w.at<float>(j, i) = lbfmodel->w[j];
 		}
-		//free_model_content(lbfmodel);
 		delete lbfmodel;
 	}
 	for (int i = 0; i < 2*num_lm; i++){
@@ -132,19 +120,21 @@ void RegressorTrain::GlobalRegress(std::vector<std::vector<cv::Point2d>> *target
 vector<cv::Point2d> RegressorTrain::Apply(const vector<cv::Point2d> &mean_shape, 
 	const DataPoint &data) const
 {
+
+	cv::Mat bin_feat = cv::Mat::zeros(1, feat_length, CV_32FC1);
+	cv::Mat mat_offset(1, 2 * training_parameters.landmark_count, CV_32FC1);
 	vector<cv::Point2d> offset(training_parameters.landmark_count);
 
-	vector<bool> bin_feat = vector<bool>(feat_length);
+	// derive binary feature
 	for (int i = 0; i < training_parameters.landmark_count; ++i){
 		forests[i].Apply(i, mean_shape, data, bin_feat);
 	}
 	
-	for (int i = 0; i < training_parameters.landmark_count; ++i){
-		offset[i] = cv::Point2d(0,0);
-		for (int j = 0; j < feat_length; ++j){
-			offset[i].x += bin_feat[j] * glb_weight[j][2 * i];
-			offset[i].y += bin_feat[j] * glb_weight[j][2 * i + 1];
-		}
+	// apply global model
+	mat_offset = bin_feat * w;
+	for (int i = 0; i < mean_shape.size(); ++i){
+		offset[i].x = mat_offset.at<float>(0, 2 * i);
+		offset[i].y = mat_offset.at<float>(0, 2 * i + 1);
 	}
 	return offset;
 }
@@ -155,16 +145,7 @@ void RegressorTrain::write(cv::FileStorage &fs)const
 	cv::WriteStructContext ws_tis(fs, "", CV_NODE_MAP + CV_NODE_FLOW);
 	cv::write(fs, "feat_length", feat_length);
 	cv::write(fs, "forests", forests);
-
-	// the linear models will be saved seperately
-	{
-		cv::WriteStructContext ws_tis(fs, "glb_weight", CV_NODE_SEQ + CV_NODE_FLOW);
-		for (int i = 0; i < glb_weight.size(); ++i){
-			cv::write(fs, "", glb_weight[i]);
-		}
-	}
-	vector<double>();
-	
+	cv::write(fs, "w", w);
 }
 
 void write(cv::FileStorage& fs, const string&, const RegressorTrain& r)

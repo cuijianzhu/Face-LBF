@@ -36,7 +36,7 @@ using namespace std;
 
 void RTree::Apply(int num_trees, int num_lm, int index_tree, int index_lm,
 	const cv::Mat &image, const vector<cv::Point2d> &mean_shape,
-	const vector<cv::Point2d> &init_shape, vector<bool> &bin_feat) const
+	const vector<cv::Point2d> &init_shape, cv::Mat &bin_feat) const
 {
 	int num_nodes_split = (num_nodes - 1) / 2;
 	int idx_node = 0;
@@ -71,13 +71,13 @@ void RTree::Apply(int num_trees, int num_lm, int index_tree, int index_lm,
 		+ index_tree * num_leaves + idx_node - (num_nodes - num_leaves);
 	if (bool_index > num_lm * num_trees * num_leaves)
 		throw out_of_range("bool index is out of the range of bin_feat during appling the tree");
-	bin_feat[bool_index] = 1;
+	bin_feat.at<float>(0, bool_index) = 1;
 }
 
 void RFS::Apply(int num_lm, int index_lm, const cv::Mat &image,
 	const std::vector<cv::Point2d> &mean_shape,
 	const std::vector<cv::Point2d> &init_shape,
-	std::vector<bool> &bin_feat) const
+	cv::Mat &bin_feat) const
 {
 	for (int i = 0; i < rtrees.size(); i++){
 		rtrees[i].Apply(rtrees.size(), num_lm, i, index_lm, image, mean_shape, init_shape, bin_feat);
