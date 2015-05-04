@@ -130,6 +130,7 @@ vector<DataPoint> GetData(const TrainingParameters &tp, const string filename)
 		DataPoint current_data_point;
 		current_data_point.image = cv::imread(tp.training_data_root + "/" +
 			current_image_pathname, CV_LOAD_IMAGE_GRAYSCALE);
+		cv::equalizeHist(current_data_point.image, current_data_point.image);
 		if (current_data_point.image.data == nullptr)
 			throw runtime_error("Cannot open image file " + current_image_pathname + " (Pay attention to path separator!)");
 		int left, right, top, bottom;

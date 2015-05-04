@@ -43,6 +43,7 @@ void AlignImage(const FaceX & face_x)
 	cv::Mat image = cv::imread(kTestImage);
 	cv::Mat gray_image;
 	cv::cvtColor(image, gray_image, CV_BGR2GRAY);
+	cv::equalizeHist(gray_image, gray_image);
 	cv::CascadeClassifier cc(kAlt2);
 	if(cc.empty())
 	{
@@ -79,6 +80,7 @@ void Tracking(const FaceX & face_x)
 	{
 		vc >> frame;
 		cv::cvtColor(frame, img, cv::COLOR_BGR2GRAY);
+		cv::equalizeHist(img, img);
 		cv::imshow("test", img);
 
 		cv::vector<cv::Point2d> original_landmarks = landmarks;
