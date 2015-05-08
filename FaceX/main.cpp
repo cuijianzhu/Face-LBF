@@ -63,7 +63,9 @@ void AlignImage(const FaceX & face_x)
 		}
 	}
 	cv::imshow("Alignment result", image);
-	cv::waitKey();
+	cv::waitKey(0);
+	// terminate the process because of error of OpenCV during deconstructing
+	exit(0);
 }
 
 void Tracking(const FaceX & face_x)
@@ -111,6 +113,8 @@ void Tracking(const FaceX & face_x)
 			}
 		}
 	}
+	// terminate the process because of error of OpenCV during deconstructing
+	exit(0);
 }
 
 int main()

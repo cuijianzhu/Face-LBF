@@ -6,24 +6,24 @@
 
 # The root path of all training data. There should be the label file.
 # which contains landmark labels for the training data. 
-training_data_root: train/
+training_data_root: lfpw/
 
 # The name of the label file for training set
-training_data_file: labels.txt
+training_data_file: labels_sm.txt
 
 # The name of the label file for testing set
 testing_data_file: test_sm.txt
 
 
 # How many landmarks for each face
-landmark_count: 5
+landmark_count: 68
 
 # The index of left eye center in landmarks. If there is no landmark for eye center 
 # in the landmark configuration, choose one near eye center (e.g. eye corner)
-left_eye_index: 0
+left_eye_index: 36
 
 # Same as above, for right eye center,whose distance are used to normalize the shape
-right_eye_index: 1
+right_eye_index: 42
 
 # The output model file path and name (must end with ".xml.gz")
 output_model_pathname: model.xml.gz
@@ -34,13 +34,14 @@ output_model_pathname: model.xml.gz
 # can use the default value as below.
 
 # The number of top-level stages
-num_stages: 5
+num_stages: 1
 
-# The number of top-level stages
-num_trees: 3
+# The number of trees in each random forest 
+# one forest per landmark
+num_trees: 2
 
 # The overlap ratio when deviding samples among trees
-overlap_ratio: 0.3
+overlap_ratio: 0.4
 
 # The number of random features generated for each top-level node
 num_feats: 500
@@ -48,9 +49,9 @@ num_feats: 500
 # The range of randomness for each feature. Must in range [0.01, 1]. Lower value 
 # means features will be generated near the current guessed landmark positions.
 # the number of radiuses should be eqaul to num_stages
-# radius_feats: 0.4 0.3 0.15 0.1 0.06
+# radius_feats: 0.4 0.3 0.2 0.15 0.12 0.10 0.08 0.06
 # radius_feats: 0.4 0.32 0.26 0.22 0.18 0.14 0.12 0.1 0.08 0.06
-radius_feats: 0.4 0.4 0.4 0.4 0.4
+radius_feats: 0.8
 
 # The Depth of trees
 depth_trees: 4

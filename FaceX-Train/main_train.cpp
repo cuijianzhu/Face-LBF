@@ -26,6 +26,7 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <numeric>
 #include <stdexcept>
+#include <time.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -244,8 +245,9 @@ double EstimateError(const TrainingParameters &tp, vector<vector<cv::Point2d>> &
 	return error_sum / (target.size() * target[0].size());
 }
 
-void TrainModel(const vector<DataPoint> &training_data,
-	vector<DataPoint> &testing_data, const TrainingParameters &tp)
+void TrainModel(const TrainingParameters &tp, const vector<DataPoint> &training_data,
+	vector<cv::Point2d> &mean_shape, vector<vector<cv::Point2d>> &test_init_shapes,
+	vector<RegressorTrain> &stage_regressors, vector<double> &errors_train)
 {
 	cout << "Training data count: " << training_data.size() << endl;
 
@@ -253,19 +255,15 @@ void TrainModel(const vector<DataPoint> &training_data,
 	for (const DataPoint &dp : training_data)
 		shapes.push_back(dp.landmarks);
 
-	vector<cv::Point2d> mean_shape = MeanShape(shapes, tp);
+	mean_shape = MeanShape(shapes, tp);
 
-	vector<vector<cv::Point2d>> test_init_shapes =
-		CreateTestInitShapes(training_data, tp);
+	test_init_shapes = CreateTestInitShapes(training_data, tp);
 
 	vector<DataPoint> augmented_training_data =
 		AugmentData(training_data, tp.AugmentDataFactor);
 
 
 	/***** regress the model *****/
-	vector<RegressorTrain> stage_regressors(tp.num_stages, RegressorTrain(tp));
-	vector<double> errors(tp.num_stages + 1);
-
 	for (int i = 0; i < tp.num_stages; ++i)
 	{
 		cout << endl << "==================== regressor " << i + 1 << " ====================" << endl;
@@ -273,7 +271,7 @@ void TrainModel(const vector<DataPoint> &training_data,
 
 		vector<vector<cv::Point2d>> normalized_targets =
 			ComputeNormalizedTargets(mean_shape, augmented_training_data);
-		errors[i] = EstimateError(tp, normalized_targets);
+		errors_train[i] = EstimateError(tp, normalized_targets);
 
 		stage_regressors[i].Regress(i, mean_shape, &normalized_targets,
 			augmented_training_data);
@@ -287,34 +285,29 @@ void TrainModel(const vector<DataPoint> &training_data,
 			t.Apply(&offset, false);
 			dp.init_shape = ShapeAdjustment(dp.init_shape, offset);
 		}
-
 		cout << "(^_^) Finish training " << i + 1 << " regressor. Using "
 			<< (cv::getTickCount() - s) / cv::getTickFrequency()
 			<< "s. " << tp.num_stages << " in total." << endl;
 	}
-
-	/***** estimate the error *****/
-	cout << endl << "=================== errors ===================" << endl;
-	// train set errors
 	vector<vector<cv::Point2d>> normalized_residual_train =
 		ComputeNormalizedTargets(mean_shape, augmented_training_data);
-	errors[tp.num_stages] = EstimateError(tp, normalized_residual_train);
-	for (int i = 0; i < tp.num_stages + 1; ++i)
-	{
-		cout << "train set error after " << i << " stages: " << errors[i] << endl;
-	}
-	//test set errors
-	cout << "test set size : " << testing_data.size() << endl;
+	errors_train[tp.num_stages] = EstimateError(tp, normalized_residual_train);
+}
+
+void TestModel(const TrainingParameters &tp, vector<DataPoint> &testing_data,
+	const vector<cv::Point2d> &mean_shape, const vector<vector<cv::Point2d>> &test_init_shapes,
+	const vector<RegressorTrain> &stage_regressors, vector<double> &errors_test)
+{
+	cout << "Testing data count: " << testing_data.size() << endl;
 	for (int i = 0; i < testing_data.size(); i++){
 		testing_data[i].init_shape = MapShape(cv::Rect(0, 0, 1, 1),
 			test_init_shapes[0], testing_data[i].face_rect);
 	}
-	vector<double> test_errors(tp.num_stages + 1);
 	for (int i = 0; i < tp.num_stages; ++i)
 	{
 		vector<vector<cv::Point2d>> normalized_targets =
 			ComputeNormalizedTargets(mean_shape, testing_data);
-		test_errors[i] = EstimateError(tp, normalized_targets);
+		errors_test[i] = EstimateError(tp, normalized_targets);
 
 		for (DataPoint &dp : testing_data)
 		{
@@ -327,28 +320,76 @@ void TrainModel(const vector<DataPoint> &training_data,
 	}
 	vector<vector<cv::Point2d>> normalized_residual_test =
 		ComputeNormalizedTargets(mean_shape, testing_data);
-	test_errors[tp.num_stages] = EstimateError(tp, normalized_residual_test);
-	for (int i = 0; i < tp.num_stages + 1; ++i)
-	{
-		cout << "test set error after " << i << " stages: " << test_errors[i] << endl;
-	}
-	cout << "============================================" << endl;
+	errors_test[tp.num_stages] = EstimateError(tp, normalized_residual_test);
+}
 
-
-	/***** store the model *****/
+// this fuction must be called at last
+void OutputModel(const TrainingParameters &tp, 
+	const vector<cv::Point2d> &mean_shape,
+	const vector<vector<cv::Point2d>> &test_init_shapes,
+	const vector<RegressorTrain> &stage_regressors)
+{
 	// Because there is something wrong with operator << on my PC, I turn to write() instead.
 	cv::FileStorage model_file;
 	model_file.open(tp.output_model_pathname, cv::FileStorage::WRITE);
 	write(model_file, "mean_shape", mean_shape);
 	{
-		cv::WriteStructContext ws_tis(model_file, "test_init_shapes", CV_NODE_SEQ + CV_NODE_FLOW);
-		for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
-			write(model_file, "", *it);
+	cv::WriteStructContext ws_tis(model_file, "test_init_shapes", CV_NODE_SEQ + CV_NODE_FLOW);
+	for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
+	write(model_file, "", *it);
 	}
 	write(model_file, "stage_regressors", stage_regressors);
 	model_file.release();
+	// because the deconstruction of FileStorage will cause error
+	// I have to exit here
+	exit(0);
 }
 
+void OutputRecord(const TrainingParameters &tp,
+	const vector<cv::Point2d> &mean_shape,
+	const vector<vector<cv::Point2d>> &test_init_shapes,
+	const vector<RegressorTrain> &stage_regressors, 
+	vector<double> &errors_train, vector<double> &errors_test)
+{
+	/***** output the error *****/
+	cout << endl << "=================== errors ===================" << endl;
+	for (int i = 0; i < tp.num_stages + 1; ++i)
+		cout << "train set error after " << i << " stages: " << errors_train[i] << endl;
+	for (int i = 0; i < tp.num_stages + 1; ++i)
+		cout << "test set error after " << i << " stages: " << errors_test[i] << endl;
+	cout << "============================================" << endl;
+	
+
+	/***** store the error *****/
+	time_t rawtime;
+	time(&rawtime);
+	tm timeinfo;
+	localtime_s(&timeinfo, &rawtime);
+	
+	fstream flog("Error Log.txt", ios::out | ios::app);
+	flog << endl;
+	flog << "============================================" << endl;
+	flog << "time: " << asctime(&timeinfo);
+	flog << "data_dir: " << tp.training_data_root << endl;
+	flog << "train_file: " << tp.training_data_file << endl;
+	flog << "test_file: " << tp.testing_data_file << endl;
+	flog << "model_file: " << tp.output_model_pathname << endl;
+	flog << "landmark_count: " << tp.landmark_count << endl;
+	flog << "num_stages: " << tp.num_stages << endl;
+	flog << "num_trees: " << tp.num_trees << endl;
+	flog << "radius_feat: ";
+	for (int i = 0; i < tp.num_stages; i++)
+		flog << tp.radius_feats[i] << " ";
+	flog << endl;
+	flog << "depth_trees: " << tp.depth_trees << endl;
+	for (int i = 0; i < tp.num_stages + 1; i++)
+		flog << "train set error after " << i << " stages: " << errors_train[i] << endl;
+	for (int i = 0; i < tp.num_stages + 1; i++)
+		flog << "test set error after " << i << " stages: " << errors_test[i] << endl;
+	flog << "============================================" << endl;
+	flog.close();
+	flog.clear();
+}
 
 int main(int argc, char *argv[])
 {
@@ -360,11 +401,20 @@ int main(int argc, char *argv[])
 
 	try
 	{
-		TrainingParameters tp = ReadParameters(argv[1]);
 		cout << "Training begin." << endl;
+		TrainingParameters tp = ReadParameters(argv[1]);
 		vector<DataPoint> training_data = GetData(tp, tp.training_data_file);
 		vector<DataPoint> testing_data = GetData(tp, tp.testing_data_file);
-		TrainModel(training_data, testing_data, tp);
+		vector<cv::Point2d> mean_shape;
+		vector<vector<cv::Point2d>> test_init_shapes;
+		vector<RegressorTrain> stage_regressors(tp.num_stages, RegressorTrain(tp));
+		vector<double> errors_train(tp.num_stages + 1);
+		vector<double> errors_test(tp.num_stages + 1);
+
+		TrainModel(tp, training_data, mean_shape, test_init_shapes, stage_regressors, errors_train);
+		TestModel(tp, testing_data, mean_shape, test_init_shapes, stage_regressors, errors_test);
+		OutputRecord(tp, mean_shape, test_init_shapes, stage_regressors, errors_train, errors_test);
+		OutputModel(tp, mean_shape, test_init_shapes, stage_regressors);
 	}
 	catch (const exception &e)
 	{
